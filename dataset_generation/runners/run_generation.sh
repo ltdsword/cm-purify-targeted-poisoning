@@ -12,7 +12,8 @@ set -e
 
 # Load conda environment
 eval "$(conda shell.bash hook)"
-conda activate targeted_poisoning
+conda create --name purifying_poison
+conda activate purifying_poison
 pip install requirements.txt
 
 # Run the single MAIN script to execute both Setup and Poison Generation

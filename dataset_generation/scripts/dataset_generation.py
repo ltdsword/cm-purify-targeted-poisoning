@@ -191,6 +191,34 @@ def craft_bp():
         
     bp_root = os.path.join(BASE_DIR, 'BullseyePoison')
     os.makedirs(TRAIN_POISON_DIR, exist_ok=True)
+    
+    # Ensure model-chks exists for BullseyePoison
+    bp_model_chks = os.path.join(bp_root, 'model-chks')
+    if not os.path.exists(bp_model_chks) or not os.listdir(bp_model_chks):
+        print("model-chks missing or empty for BullseyePoison. Downloading from Google Drive...")
+        try:
+            import gdown
+        except ImportError:
+            subprocess.run(["pip", "install", "gdown"], check=True)
+            import gdown
+            
+        zip_path = os.path.join(bp_root, "model_chks_release.zip")
+        gdown.download(id="1TwxNbJ1arDNQrBJdt5AFeaAbKC65HOko", output=zip_path, quiet=False)
+        
+        print("Extracting checkpoints...")
+        import zipfile
+        import shutil
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(bp_root)
+        
+        extracted_dir = os.path.join(bp_root, 'model_chks_release')
+        os.makedirs(bp_model_chks, exist_ok=True)
+        if os.path.exists(extracted_dir):
+            for file_name in os.listdir(extracted_dir):
+                shutil.move(os.path.join(extracted_dir, file_name), bp_model_chks)
+            shutil.rmtree(extracted_dir)
+        os.remove(zip_path)
+        print("Checkpoints downloaded and extracted successfully.")
 
     print(f"Total BP setups: {len(bp_setups)}")
     for i, setup in enumerate(bp_setups):

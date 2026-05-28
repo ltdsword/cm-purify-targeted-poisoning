@@ -28,3 +28,4 @@ opencv-python
 matplotlib
 google-cloud-storage
 google-cloud-automl
+gdown
