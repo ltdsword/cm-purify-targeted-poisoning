@@ -1,0 +1,30 @@
+# Data handling and arrays
+numpy
+huggingface_hub
+
+# Miscellaneous Utilities
+tqdm
+
+# Core PyTorch Framework
+torch>=1.6.0
+torchvision>0.5.0
+
+# Image Processing
+Pillow
+
+# Hugging Face Diffusers (for GDMP Purification)
+diffusers
+transformers
+accelerate
+
+# Utils
+# In case the framework accesses datasets directly
+lmdb 
+# Used by forest/victims/models.py if EfficientNet is called
+efficientnet_pytorch 
+pandas
+scipy
+opencv-python
+matplotlib
+google-cloud-storage
+google-cloud-automl
