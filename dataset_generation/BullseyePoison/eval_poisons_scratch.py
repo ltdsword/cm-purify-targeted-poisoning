@@ -4,9 +4,9 @@ import torchvision.transforms as transforms
 
 import argparse
 import os
-from models import *
-from utils import fetch_target
-from dataloader import PoisonedDataset
+from dataset_generation.BullseyePoison.models import *
+from dataset_generation.BullseyePoison.utils import fetch_target
+from dataset_generation.BullseyePoison.dataloader import PoisonedDataset
 import json
 import time
 import sys

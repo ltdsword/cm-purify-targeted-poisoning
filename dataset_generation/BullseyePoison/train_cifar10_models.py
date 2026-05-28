@@ -9,11 +9,11 @@ import torchvision.transforms as transforms
 
 import argparse
 
-from dataloader import SubsetOfList
+from dataset_generation.BullseyePoison.dataloader import SubsetOfList
 import time
 import os
 
-from models import *
+from dataset_generation.BullseyePoison.models import *
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')

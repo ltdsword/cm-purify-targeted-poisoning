@@ -4,17 +4,18 @@ import torchvision.transforms as transforms
 
 import argparse
 import os
-from models import *
-from utils import load_pretrained_net, fetch_target, fetch_target_102flower_dset
-from dataloader import PoisonedDataset, FeatureSet
+from utils import load_pretrained_net, fetch_all_external_targets
+from dataset_generation.BullseyePoison.dataloader import PoisonedDataset, FeatureSet
 import pandas as pd
-import sys
 import time
 from scipy.special import softmax
 from scipy.spatial.distance import cdist
 from collections import Counter
 from torch.utils.data import Subset
 
+import sys
+sys.path.append("../")
+from dataset_generation.BullseyePoison.models import *
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -52,7 +53,7 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-def train_network_with_poison(net, target_img, poison_tuple_list, poisoned_dset, args, testset, clean_test_acc=False):
+def train_network_with_poison(net, eval_targets, poison_tuple_list, poisoned_dset, args, testset, device='cuda', clean_test_acc=False):
     # requires implementing a get_penultimate_params_list() method to get the parameter identifier of the net's last
     # layer
 
@@ -68,7 +69,7 @@ def train_network_with_poison(net, target_img, poison_tuple_list, poisoned_dset,
 
     net.eval()
 
-    criterion = nn.CrossEntropyLoss().to('cuda')
+    criterion = nn.CrossEntropyLoss().to(device)
 
     poisoned_loader = torch.utils.data.DataLoader(poisoned_dset, batch_size=args.retrain_bsize, shuffle=True)
     # The test set of clean CIFAR10
@@ -91,7 +92,7 @@ def train_network_with_poison(net, target_img, poison_tuple_list, poisoned_dset,
         end_time = time.time()
         for ite, (input, label) in enumerate(poisoned_loader):
             if args.device == 'cuda':
-                input, label = input.to('cuda'), label.to('cuda')
+                input, label = input.to('cuda'), label.to(device)
 
             output = net.module.linear(input)
 
@@ -115,23 +116,32 @@ def train_network_with_poison(net, target_img, poison_tuple_list, poisoned_dset,
                              loss=loss_meter, acc=acc_meter))
             sys.stdout.flush()
 
-        if epoch == args.retrain_epochs - 1:
-            # print the scores for target and base
-            if args.device == 'cuda':
-                target_pred = net(target_img.to('cuda'))
-            else:
-                target_pred = net(target_img)
-            target_scores = [float(n) for n in list(softmax(target_pred.view(-1).cpu().detach().numpy()))]
-            score, target_pred = target_pred.topk(1, 1, True, True)
-            poison_pred_list = []
-            for poison_img, _ in poison_tuple_list:
-                base_scores = net(poison_img[None, :, :, :].to(args.device))
-                base_score, base_pred = base_scores.topk(1, 1, True, True)
-                poison_pred_list.append(base_pred.item())
-            print(
-                "Target Label: {}, Poison label: {}, Prediction:{}, Target's Score:{}, Poisons' Predictions:{}".format(
-                    args.target_label, args.poison_label, target_pred[0][0].item(), target_scores,
-                    poison_pred_list))
+
+    eval_targets_acc_meter = AverageMeter()
+    val_targets_preds = []
+    val_targets_scores = []
+    with torch.no_grad():
+        for ite, (input, target) in enumerate(eval_targets):
+            input, target = input.to(device), target.to(device)
+            output = net(input)
+            _, pred = output.topk(1, 1, True, True)
+            val_targets_preds.append(str(pred[0][0].item()))
+            target_scores = [float(n) for n in list(softmax(output.view(-1).cpu().detach().numpy()))]
+            val_targets_scores.append(target_scores)
+
+            prec1 = accuracy(output, torch.tensor([args.poison_label]).to(device))[0]
+            eval_targets_acc_meter.update(prec1.item(), input.size(0))
+    print("Predictions for the external targets: {}".format(", ".join(val_targets_preds)))
+    print("EVAL ATTACK acc: {}".format(eval_targets_acc_meter.avg))
+
+    poison_pred_list = []
+    for poison_img, _ in poison_tuple_list:
+        base_scores = net(poison_img[None, :, :, :].to(args.device))
+        base_score, base_pred = base_scores.topk(1, 1, True, True)
+        poison_pred_list.append(base_pred.item())
+    print(
+        "Target Label: {}, Poison label: {}, Poisons' Predictions:{}".format(
+            args.target_label, args.poison_label, poison_pred_list))
 
     clean_acc = -1.0
     if clean_test_acc:
@@ -154,8 +164,8 @@ def train_network_with_poison(net, target_img, poison_tuple_list, poisoned_dset,
         print("* Prec: {}".format(val_acc_meter.avg))
         clean_acc = val_acc_meter.avg
 
-    return {'clean acc': clean_acc, 'prediction': target_pred[0][0].item(),
-            'poisons predictions': poison_pred_list,
+    return {'clean acc': clean_acc, 'prediction': val_targets_preds,
+            'poisons predictions': poison_pred_list, 'attack acc': eval_targets_acc_meter.avg,
             'scores': target_scores, 'malicious score': target_scores[args.poison_label]}
 
 
@@ -243,20 +253,23 @@ if __name__ == '__main__':
     # The substitute models and the victim models
     parser.add_argument('--target-net', default=["DenseNet121"], nargs="+", type=str)
     parser.add_argument("--test-chk-name", default='ckpt-%s-4800.t7', type=str)
-    parser.add_argument('--model-resume-path', default='model-chks-release', type=str,
+    parser.add_argument('--model-resume-path', default='../model-chks', type=str,
                         help="Path to the pre-trained models")
     parser.add_argument('--subset-group', default=0, type=int)
 
     # Parameters for poisons
-    parser.add_argument('--target-dset', default='cifar10', choices=['cifar10', '102flowers'])
-    parser.add_argument('--target-label', default=6, type=int)
-    parser.add_argument('--target-index-start', default=0, type=int,
-                        help='first index of the targets')
-    parser.add_argument('--target-index-end', default=-1, type=int,
-                        help='first index of the targets')
-    parser.add_argument('--target-index-step', default=1, type=int)
-    parser.add_argument('--poison-label', '-plabel', default=8, type=int,
+    parser.add_argument('--target-label', default=1, type=int)
+    parser.add_argument('--poison-label', '-plabel', default=6, type=int,
                         help='label of the poisons, or the target label we want to classify into')
+    parser.add_argument('--target-subset', default=6, type=int,
+                                    help='model of the car in epfl-gims08 dataset')
+    parser.add_argument('--target-num', default=5, type=int)
+    parser.add_argument('--target-path', default='../datasets/epfl-gims08/resized/tripod_seq', type=str,
+                                    help='path to the external images')
+    parser.add_argument('--target-start', default='-1', type=int,
+                                    help='first index of the car in epfl-gims08 dataset')
+    parser.add_argument('--target-end', default='-1', type=int,
+                                    help='last index of the car in epfl-gims08 dataset')
 
     # Parameters for re-training
     parser.add_argument('--retrain-lr', '-rlr', default=0.1, type=float,
@@ -276,13 +289,13 @@ if __name__ == '__main__':
     # Checkpoints and resuming
     parser.add_argument('--eval-poisons-root', default='', type=str,
                         help="Root folder containing poisons crafted for the targets")
-    parser.add_argument('--train-data-path', default='datasets/CIFAR10_TRAIN_Split.pth', type=str,
+    parser.add_argument('--train-data-path', default='../datasets/CIFAR10_TRAIN_Split.pth', type=str,
                         help='path to the official datasets')
     parser.add_argument('--dset-path', default='datasets', type=str,
                         help='path to the official datasets')
 
     # Defenses parameters
-    parser.add_argument('--knn-defense-k', default=range(1, 62, 2), type=int, nargs="+")
+    parser.add_argument('--knn-defense-k', default=range(1, 21), type=int, nargs="+")
     parser.add_argument('--l2outlier-defense-fraction', default=np.arange(0.02, 0.41, 0.02))
 
     parser.add_argument('--device', default='cuda')
@@ -317,9 +330,9 @@ if __name__ == '__main__':
     # testset, _ = random_split(testset, (100, 9900))
     # testset.data = testset.data[:1000] # just for the speed
 
-    defenses_dir = '{}/defenses/'.format(args.eval_poisons_root)
+    defenses_dir = '{}/defenses/target-num-{}'.format(args.eval_poisons_root, args.target_num)
     if not os.path.exists(defenses_dir):
-        os.mkdir(defenses_dir)
+        os.makedirs(defenses_dir)
 
     no_defense_res_path = "{}/no-defense.pickle".format(defenses_dir)
     if os.path.exists(no_defense_res_path):
@@ -345,30 +358,33 @@ if __name__ == '__main__':
             columns=["target_idx", "victim_net", "ite", "poisons_base_indices", "deleted_poisons_base_indices",
                      "num_deleted_samples", "fraction", "victim_net_res", "victim_net_test_acc", "victim_net_adv_succ"])
 
-    if args.target_index_end == -1:
-        args.target_index_end = args.target_index_start + 1
-    for target_idx in range(args.target_index_start, args.target_index_end, args.target_index_step):
-        print("Target_index: {}".format(target_idx))
+    target_subsets = [1, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 19]
 
-        if args.target_dset == 'cifar10':
-            assert False
-            target = fetch_target(args.target_label, target_idx, 50, subset='others',
-                                  path=args.train_data_path, transforms=transform_test)
-        elif args.target_dset == '102flowers':
-            assert True
-            assert args.target_label == -1
-            target = fetch_target_102flower_dset(target_idx, transform_test)
+    for target_subset in target_subsets:
 
-        ites = [801]
+        print("Target_subset: {}".format(target_subset))
+
+        # Get the target images
+        _targets, targets_indices, eval_targets, val_targets_indices = \
+            fetch_all_external_targets(args.target_label,
+                                       args.target_path,
+                                       args.target_subset,
+                                       args.target_start,
+                                       args.target_end,
+                                       args.target_num,
+                                       transforms=transform_test)
+
+        ites = [1000]
 
         for ite in ites[::-1]:
 
-            poisons_path = '{}/{}/{}'.format(args.eval_poisons_root, target_idx, "poison_%05d.pth" % (ite - 1))
+            poisons_path = '{}/{}/target-num-{}/{}'.format(args.eval_poisons_root, target_subset, args.target_num,
+                                                           "poison_%05d.pth" % (ite - 1))
             print("ITE: {}".format(ite))
             print("Loading poisons from {}".format(poisons_path))
             if not os.path.exists(poisons_path):
-                print("SKIPPING TARGET: {}".format(target_idx))
-                continue
+                print("We processed all poisons (for all iterations of attack) for target: {}".format(target_subset))
+                break
             if args.device == 'cuda':
                 state_dict = torch.load(poisons_path)
             else:
@@ -385,38 +401,38 @@ if __name__ == '__main__':
                 print(victim_name)
 
                 l = len(no_defense_res[no_defense_res.ite == ite]
-                        [no_defense_res.target_idx == target_idx]
+                        [no_defense_res.target_idx == target_subset]
                         [no_defense_res.victim_net == victim_name])
                 assert l <= 1
-                if l == 0:
+                if False and l == 0:
 
                     victim_net = load_pretrained_net(victim_name, args.test_chk_name, model_chk_path=args.model_resume_path,
                                                      device=args.device)
-                    res = train_network_with_poison(victim_net, target, poison_tuple_list,
+                    res = train_network_with_poison(victim_net, eval_targets, poison_tuple_list,
                                                     poisoned_dset, args, testset)
 
                     victim_res_test_acc = res['clean acc']
-                    victim_res_adv_succ = res['prediction'] == args.poison_label
+                    victim_res_adv_succ = res['attack acc']
 
-                    new_row = [target_idx, victim_name, ite, base_idx_list,
+                    new_row = [target_subset, victim_name, ite, base_idx_list,
                                res, victim_res_test_acc, victim_res_adv_succ]
                     new_row = {col: val for col, val in zip(no_defense_res.columns, new_row)}
                     no_defense_res = no_defense_res.append(new_row, ignore_index=True)
+
                     no_defense_res.to_pickle(no_defense_res_path)
                 else:
-                    print("Skipping updating no_defense_res for ite: {}, target_idx: {}, victim_name: {}".format(ite, target_idx, victim_name))
+                    print("Skipping updating no_defense_res for ite: {}, target_idx: {}, victim_name: {}".format(ite, target_subset, victim_name))
 
                 # Now evaluate the victim after knn defense deployed!
                 for k in args.knn_defense_k:
 
                     l = len(knn_defense_res[knn_defense_res.ite == ite]
-                            [knn_defense_res.target_idx == target_idx]
+                            [knn_defense_res.target_idx == target_subset]
                             [knn_defense_res.victim_net == victim_name]
                             [knn_defense_res.k == k])
                     assert l <= 1
-                    if l > 0:
-                        print("Skipping updating knn_defense_res for ite: {}, target_idx: {}, victim_name: {}, k: {}".format(ite, target_idx, victim_name, k))
-                        continue
+                    if True and l > 0:
+                        print("Skipping updating knn_defense_res for ite: {}, target_idx: {}, victim_name: {}, k: {}".format(ite, target_subset, victim_name, k))
 
                     victim_net = load_pretrained_net(victim_name, args.test_chk_name,
                                                      model_chk_path=args.model_resume_path,
@@ -425,28 +441,28 @@ if __name__ == '__main__':
                     poisoned_dset_filtered, poison_filtered_tuple_list, deleted_poisons_base_indices, num_deleted_samples = \
                         knn_defense(victim_net, poison_tuple_list, base_idx_list, poisoned_dset, k)
 
-                    res = train_network_with_poison(victim_net, target, poison_filtered_tuple_list,
+                    res = train_network_with_poison(victim_net, eval_targets, poison_filtered_tuple_list,
                                                     poisoned_dset_filtered, args, testset)
                     victim_res_test_acc = res['clean acc']
-                    victim_res_adv_succ = res['prediction'] == args.poison_label
+                    victim_res_adv_succ = res['attack acc']
 
-                    new_row = [target_idx, victim_name, ite, base_idx_list, deleted_poisons_base_indices,
+                    new_row = [target_subset, victim_name, ite, base_idx_list, deleted_poisons_base_indices,
                                num_deleted_samples, k, res, victim_res_test_acc, victim_res_adv_succ]
                     new_row = {col: val for col, val in zip(knn_defense_res.columns, new_row)}
                     knn_defense_res = knn_defense_res.append(new_row, ignore_index=True)
+                    
                     knn_defense_res.to_pickle(knn_defense_res_path)
 
                 # Now evaluate the victim after l2-norm-outlier defense deployed
                 for fraction in args.l2outlier_defense_fraction:
 
                     l = len(l2outlier_defense_res[l2outlier_defense_res.ite == ite]
-                            [l2outlier_defense_res.target_idx == target_idx]
+                            [l2outlier_defense_res.target_idx == target_subset]
                             [l2outlier_defense_res.victim_net == victim_name]
                             [l2outlier_defense_res.fraction == fraction])
                     assert l <= 1
                     if l > 0:
-                        print("Skipping updating l2outlier_defense_res for ite: {}, target_idx: {}, victim_name: {}, fraction: {}".format(ite, target_idx, victim_name, fraction))
-                        continue
+                        print("Skipping updating l2outlier_defense_res for ite: {}, target_idx: {}, victim_name: {}, fraction: {}".format(ite, target_subset, victim_name, fraction))
 
                     victim_net = load_pretrained_net(victim_name, args.test_chk_name,
                                                      model_chk_path=args.model_resume_path,
@@ -455,19 +471,18 @@ if __name__ == '__main__':
                     poisoned_dset_filtered, poison_filtered_tuple_list, deleted_poisons_base_indices, num_deleted_samples = \
                         l2outlier_defense(victim_net, poison_tuple_list, base_idx_list, poisoned_dset, fraction)
 
-                    res = train_network_with_poison(victim_net, target, poison_filtered_tuple_list,
+                    res = train_network_with_poison(victim_net, eval_targets, poison_filtered_tuple_list,
                                                     poisoned_dset_filtered, args, testset)
                     victim_res_test_acc = res['clean acc']
-                    victim_res_adv_succ = res['prediction'] == args.poison_label
+                    victim_res_adv_succ = res['attack acc']
 
-                    new_row = [target_idx, victim_name, ite, base_idx_list, deleted_poisons_base_indices,
+                    new_row = [target_subset, victim_name, ite, base_idx_list, deleted_poisons_base_indices,
                                num_deleted_samples, fraction, res, victim_res_test_acc, victim_res_adv_succ]
                     new_row = {col: val for col, val in zip(l2outlier_defense_res.columns, new_row)}
                     l2outlier_defense_res = l2outlier_defense_res.append(new_row, ignore_index=True)
-                    
+
                     l2outlier_defense_res.to_pickle(l2outlier_defense_res_path)
 
                 print("Done with evaluating the defenses for vicitm: {}".format(victim_name))
 
             print("Done with poisons for ite: {}".format(ite))
-

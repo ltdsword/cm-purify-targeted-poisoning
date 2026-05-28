@@ -4,9 +4,9 @@ import torchvision.transforms as transforms
 
 import argparse
 import os
-from models import *
-from utils import load_pretrained_net, fetch_target, fetch_camera_target
-from dataloader import PoisonedDataset, FeatureSet
+from dataset_generation.BullseyePoison.models import *
+from dataset_generation.BullseyePoison.utils import load_pretrained_net, fetch_target, fetch_camera_target
+from dataset_generation.BullseyePoison.dataloader import PoisonedDataset, FeatureSet
 import json
 import time
 import sys
@@ -335,7 +335,7 @@ if __name__ == '__main__':
             target = fetch_target(args.target_label, target_idx, 50, subset='others',
                                   path=args.train_data_path, transforms=transform_test)
         elif args.target_dset == '102flowers':
-            from utils import fetch_target_102flower_dset
+            from dataset_generation.BullseyePoison.utils import fetch_target_102flower_dset
             assert args.target_label == -1
             target = fetch_target_102flower_dset(target_idx, transform_test)
 

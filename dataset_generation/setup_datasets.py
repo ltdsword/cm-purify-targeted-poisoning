@@ -7,7 +7,7 @@ import numpy as np
 
 def main():
     print("Setting up global datasets for Witches Brew and Bullseye Polytope...")
-    os.makedirs('/media02/ndthuc03/cm-purify-targeted-poisoning/BullseyePoison/datasets', exist_ok=True)
+    os.makedirs('/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/BullseyePoison/datasets', exist_ok=True)
     os.makedirs('/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/configs', exist_ok=True)
     
     # Download / Load CIFAR-10
@@ -23,8 +23,8 @@ def main():
         'others': train_list,
         'target': test_list
     }
-    torch.save(bp_data, '/media02/ndthuc03/cm-purify-targeted-poisoning/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth')
-    print("Saved BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth")
+    torch.save(bp_data, '/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth')
+    print("Saved dataset_generation/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth")
 
     # 2. Build explicit Witches Brew Benchmark files
     np.random.seed(123)

@@ -3,8 +3,8 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import xticks
 import matplotlib.ticker as mtick
-from utils import fetch_poison_bases, read_attack_stats
-from compare_with_baseline import get_stats
+from dataset_generation.BullseyePoison.analysis.utils import fetch_poison_bases, read_attack_stats
+from dataset_generation.BullseyePoison.analysis.compare_with_baseline import get_stats
 from scipy.stats import entropy
 
 LABELSIZE = 14
@@ -217,6 +217,6 @@ if __name__ == "__main__":
     paths = ['attack-results/BP-alternatives-fixedcoeffs-notrandom/linear-transfer-learning/coeffs_fixed_type_{}'.format(ty) for ty in TYPES]
     methods = [ty for ty in TYPES]
 
-    from plot_polytopes import plot_diff_combinations
+    from dataset_generation.BullseyePoison.analysis.plot_polytopes import plot_diff_combinations
     # plot_diff_combinations(TYPES, COEFFS, METHODS_NAMES, '{}/example-figures'.format(plots_root_path))
     compare_with_baseline(paths, methods, plots_root_path, retrain_epochs)

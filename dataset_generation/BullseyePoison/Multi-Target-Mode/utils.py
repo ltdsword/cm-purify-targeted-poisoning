@@ -1,6 +1,6 @@
 import sys
 sys.path.append("../")
-from models import *
+from dataset_generation.BullseyePoison.models import *
 from PIL import Image, ExifTags
 import cv2
 import os

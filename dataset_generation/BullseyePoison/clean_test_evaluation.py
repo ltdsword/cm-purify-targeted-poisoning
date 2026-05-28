@@ -4,9 +4,9 @@ import torchvision.transforms as transforms
 
 import argparse
 import os
-from models import *
-from utils import load_pretrained_net, fetch_target, fetch_nearest_poison_bases, fetch_poison_bases
-from trainer import make_convex_polytope_poisons, train_network_with_poison
+from dataset_generation.BullseyePoison.models import *
+from dataset_generation.BullseyePoison.utils import load_pretrained_net, fetch_target, fetch_nearest_poison_bases, fetch_poison_bases
+from dataset_generation.BullseyePoison.trainer import make_convex_polytope_poisons, train_network_with_poison
 
 
 class Logger(object):

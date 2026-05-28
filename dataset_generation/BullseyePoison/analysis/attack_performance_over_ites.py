@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import xticks
 import matplotlib.ticker as mtick
-from utils import read_attack_stats, VICTIMS_COLORS, VICTIMS_LINESTYLES, \
+from dataset_generation.BullseyePoison.analysis.utils import read_attack_stats, VICTIMS_COLORS, VICTIMS_LINESTYLES, \
     COEFFS_COLORS, COEFFS_LINESTYLES, COEFFS_LABELS
 import pandas as pd
 

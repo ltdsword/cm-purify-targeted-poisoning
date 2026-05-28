@@ -8,7 +8,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
-from utils import load_pretrained_net, fetch_target
+from dataset_generation.BullseyePoison.utils import load_pretrained_net, fetch_target
 
 
 class PoisonBatch(torch.nn.Module):

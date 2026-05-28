@@ -1,4 +1,4 @@
-from utils import read_attack_stats
+from dataset_generation.BullseyePoison.analysis.utils import read_attack_stats
 import pandas as pd
 
 

@@ -1,16 +1,12 @@
-import sys
-
-sys.path.append("../")
 import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 
 import argparse
 import os
-from models import *
-from utils import load_pretrained_net, fetch_all_external_targets, \
-    fetch_nearest_poison_bases, fetch_poison_bases
-from trainer import make_convex_polytope_poisons, train_network_with_poison
+from dataset_generation.BullseyePoison.models import *
+from dataset_generation.BullseyePoison.utils import load_pretrained_net, fetch_target, fetch_nearest_poison_bases, fetch_poison_bases
+from dataset_generation.BullseyePoison.trainer import make_convex_polytope_poisons, train_network_with_poison
 
 
 class Logger(object):
@@ -37,8 +33,8 @@ if __name__ == '__main__':
     parser.add_argument('--end2end', default=False, choices=[True, False], type=bool,
                         help="Whether to consider an end-to-end victim")
     parser.add_argument('--substitute-nets', default=['ResNet50', 'ResNet18'], nargs="+", required=False)
-    parser.add_argument('--victim-net', default=["DenseNet121"], nargs="+", type=str)
-    parser.add_argument('--model-resume-path', default='../model-chks-release', type=str,
+    parser.add_argument('--target-net', default=["DenseNet121"], nargs="+", type=str)
+    parser.add_argument('--model-resume-path', default='model-chks', type=str,
                         help="Path to the pre-trained models")
     parser.add_argument('--net-repeat', default=1, type=int)
     parser.add_argument("--subs-chk-name", default=['ckpt-%s-4800.t7'], nargs="+", type=str)
@@ -47,19 +43,13 @@ if __name__ == '__main__':
                         help='Dropout for the substitute nets, will be turned on for both training and testing')
 
     # Parameters for poisons
-    parser.add_argument('--target-path', default='../datasets/epfl-gims08/resized/tripod_seq', type=str,
-                        help='path to the external images')
-    parser.add_argument('--target-index', default=6, type=int,
-                        help='model of the car in epfl-gims08 dataset')
-    parser.add_argument('--target-start', default='-1', type=int,
-                        help='first index of the car in epfl-gims08 dataset')
-    parser.add_argument('--target-end', default='-1', type=int,
-                        help='last index of the car in epfl-gims08 dataset')
-    parser.add_argument('--target-num', default='5', type=int,
-                        help='number of targets')
-
-    parser.add_argument('--target-label', default=1, type=int)
-    parser.add_argument('--poison-label', '-plabel', default=6, type=int,
+    parser.add_argument('--target-dset', default='cifar10', choices=['cifar10', '102flowers'])
+    parser.add_argument('--target-label', default=6, type=int)
+    parser.add_argument('--target-index', default=1, type=int,
+                        help='index of the target sample')    
+    parser.add_argument('--start-idx', default=0, type=int,
+                        help='Offset to skip base images of the poison_label class (to separate dataset pools)')    
+    parser.add_argument('--poison-label', '-plabel', default=8, type=int,
                         help='label of the poisons, or the target label we want to classify into')
     parser.add_argument('--poison-num', default=5, type=int,
                         help='number of poisons')
@@ -68,7 +58,7 @@ if __name__ == '__main__':
                         help='learning rate for making poison')
     parser.add_argument('--poison-momentum', '-pm', default=0.9, type=float,
                         help='momentum for making poison')
-    parser.add_argument('--poison-ites', default=1000, type=int,
+    parser.add_argument('--poison-ites', default=4000, type=int,
                         help='iterations for making poison')
     parser.add_argument('--poison-decay-ites', type=int, metavar='int', nargs="+", default=[])
     parser.add_argument('--poison-decay-ratio', default=0.1, type=float)
@@ -104,14 +94,13 @@ if __name__ == '__main__':
     parser.add_argument('--resume-poison-ite', default=0, type=int,
                         help="Will automatically match the poison checkpoint corresponding to this iteration "
                              "and resume training")
-    parser.add_argument('--train-data-path', default='../datasets/CIFAR10_TRAIN_Split.pth', type=str,
+    parser.add_argument('--train-data-path', default='datasets/CIFAR10_TRAIN_Split.pth', type=str,
                         help='path to the official datasets')
     parser.add_argument('--dset-path', default='datasets', type=str,
                         help='path to the official datasets')
 
     parser.add_argument('--mode', default='convex', type=str,
-                        help='if convex, run the convexpolytope attack proposed by the paper, '
-                             'otherwise run the mean method')
+                        help='if convex, run the convexpolytope attack proposed by the paper, otherwise just run the mean shifting thing')
     parser.add_argument('--device', default='cuda', type=str)
     args = parser.parse_args()
 
@@ -137,9 +126,9 @@ if __name__ == '__main__':
 
     print("Loading the victims networks")
     targets_net = []
-    for vnet in args.victim_net:
-        victim_net = load_pretrained_net(vnet, args.test_chk_name, model_chk_path=args.model_resume_path)
-        targets_net.append(victim_net)
+    for tnet in args.target_net:
+        target_net = load_pretrained_net(tnet, args.test_chk_name, model_chk_path=args.model_resume_path)
+        targets_net.append(target_net)
 
     cifar_mean = (0.4914, 0.4822, 0.4465)
     cifar_std = (0.2023, 0.1994, 0.2010)
@@ -148,34 +137,30 @@ if __name__ == '__main__':
         transforms.Normalize(cifar_mean, cifar_std),
     ])
 
-    # Get the target images
-    _targets, targets_indices, eval_targets, val_targets_indices = fetch_all_external_targets(args.target_label,
-                                                                                              args.target_path,
-                                                                                              args.target_index,
-                                                                                              args.target_start,
-                                                                                              args.target_end,
-                                                                                              args.target_num,
-                                                                                              transforms=transform_test)
-    targets = [x for x, _ in _targets]
-    # assert len(targets) > 1, "we have only one target, but the multiple_target mode is enabled"
-    print("All target indices used in crafting poisons: {}".format(targets_indices))
+    # Get the target image
+    if args.target_dset == 'cifar10':
+        target = fetch_target(args.target_label, args.target_index, 50, subset='others',
+                              path=args.train_data_path, transforms=transform_test)
+    elif args.target_dset == '102flowers':
+        from dataset_generation.BullseyePoison.utils import fetch_target_102flower_dset
 
-    # creating result directory and log file
-    if args.mode == 'mean':
-        chk_path = os.path.join(args.chk_path, 'mean')
-    else:
-        chk_path = os.path.join(args.chk_path, args.mode)
+        target = fetch_target_102flower_dset(args.target_index, transforms)
+
+    chk_path = os.path.join(args.chk_path, args.mode)
+
+    import pickle
+    if os.environ.get('BP_EXPORT_DIR') is not None:
+        chk_path = os.environ.get('BP_EXPORT_DIR')
+        os.makedirs(chk_path, exist_ok=True)
     if args.net_repeat > 1:
         chk_path = '{}-{}Repeat'.format(chk_path, args.net_repeat)
     chk_path = os.path.join(chk_path, str(args.poison_ites))
     chk_path = os.path.join(chk_path, str(args.target_index))
-    chk_path = os.path.join(chk_path, "target-num-{}".format(args.target_num))
     if not os.path.exists(chk_path):
         os.makedirs(chk_path)
     import sys
 
     sys.stdout = Logger('{}/log.txt'.format(chk_path))
-
     # Load or craft the poison!
     if args.eval_poison_path != "":
         state_dict = torch.load(args.eval_poison_path)
@@ -186,26 +171,24 @@ if __name__ == '__main__':
         print("Now evaluating on the target nets")
         t = 0
         tt = 0
-        assert False, "ToDo: check here!"
     else:
         print(args)
         print("Path: {}".format(chk_path))
-
         # Otherwise, we craft new poisons
         if args.nearest:
-            base_tensor_list, base_idx_list = \
-                fetch_nearest_poison_bases(sub_net_list, targets, args.poison_num,
-                                           args.poison_label, args.num_per_class, subset='others',
-                                           train_data_path=args.train_data_path, transforms=transform_test, )
+            base_tensor_list, base_idx_list = fetch_nearest_poison_bases(sub_net_list, target, args.poison_num,
+                                                                         args.poison_label, args.num_per_class,
+                                                                         'others',
+                                                                         args.train_data_path, transform_test,
+                                                                         start_idx=args.start_idx)
 
         else:
             # just fetch the first poison_num samples
             base_tensor_list, base_idx_list = fetch_poison_bases(args.poison_label, args.poison_num, subset='others',
-                                                                 path=args.train_data_path, transforms=transform_test)
-        base_tensor_list = [bt.to(args.device) for bt in base_tensor_list]
+                                                                 path=args.train_data_path, transforms=transform_test,
+                                                                 start_idx=args.start_idx)
+        base_tensor_list = [bt.to('cuda') for bt in base_tensor_list]
         print("Selected base image indices: {}".format(base_idx_list))
-        print("Target indices: {}".format(targets_indices))
-        print("# Targets: {}, # Poisons: {}".format(len(targets), len(base_tensor_list)))
 
         if args.resume_poison_ite > 0:
             state_dict = torch.load(os.path.join(chk_path, "poison_%05d.pth" % args.resume_poison_ite))
@@ -221,34 +204,43 @@ if __name__ == '__main__':
         import time
 
         t = time.time()
-        poison_tuple_list = \
-            make_convex_polytope_poisons(sub_net_list, victim_net, base_tensor_list, targets,
-                                         targets_indices, device=args.device,
-                                         opt_method=args.poison_opt,
-                                         lr=args.poison_lr, momentum=args.poison_momentum, iterations=args.poison_ites,
-                                         epsilon=args.poison_epsilon, decay_ites=args.poison_decay_ites,
-                                         mean=torch.Tensor(cifar_mean).reshape(1, 3, 1, 1),
-                                         std=torch.Tensor(cifar_std).reshape(1, 3, 1, 1),
-                                         decay_ratio=args.poison_decay_ratio, chk_path=chk_path, end2end=args.end2end,
-                                         poison_idxes=base_idx_list, poison_label=args.poison_label, mode=args.mode,
-                                         tol=args.tol, start_ite=args.resume_poison_ite, poison_init=poison_init,
-                                         net_repeat=args.net_repeat)
-
+        poison_tuple_list = make_convex_polytope_poisons(sub_net_list, target_net, base_tensor_list,
+                                                         target, device='cuda', opt_method=args.poison_opt,
+                                                         lr=args.poison_lr, momentum=args.poison_momentum,
+                                                         iterations=args.poison_ites, epsilon=args.poison_epsilon,
+                                                         decay_ites=args.poison_decay_ites,
+                                                         decay_ratio=args.poison_decay_ratio,
+                                                         mean=torch.Tensor(cifar_mean).reshape(1, 3, 1, 1),
+                                                         std=torch.Tensor(cifar_std).reshape(1, 3, 1, 1),
+                                                         chk_path=chk_path, poison_idxes=base_idx_list,
+                                                         poison_label=args.poison_label,
+                                                         tol=args.tol,
+                                                         end2end=args.end2end,
+                                                         start_ite=args.resume_poison_ite,
+                                                         poison_init=poison_init,
+                                                         mode=args.mode,
+                                                         net_repeat=args.net_repeat)
         tt = time.time()
 
-    res = []
-    print("Evaluating against victims networks")
-    for vnet, vnet_name in zip(targets_net, args.victim_net):
-        print(vnet_name)
-        attack_acc, attack_val_acc = train_network_with_poison(vnet, targets, targets_indices, poison_tuple_list,
-                                                               base_idx_list, chk_path,
-                                                               args, save_state=False, eval_targets=eval_targets)
+    # Export poisons explicitly if requested via env var
+    if os.environ.get('BP_EXPORT_DIR') is not None:
+        export_path = os.environ.get('BP_EXPORT_DIR')
+        export_file = os.path.join(export_path, 'poisons.pickle')
+        with open(export_file, 'wb') as f:
+            pickle.dump({'poisons': poison_tuple_list, 'base_indices': base_idx_list, 'target_idx': args.target_index}, f)
+        print(f"Poisons explicitly exported to {export_file}")
 
-        res.append((attack_acc, attack_val_acc))
-        print("--------")
+    res = []
+    # print("Evaluating against victims networks")
+    # for tnet, tnet_name in zip(targets_net, args.target_net):
+    #     print(tnet_name)
+    #     pred = train_network_with_poison(tnet, target, poison_tuple_list, base_idx_list, chk_path, args,
+    #                                      save_state=False)
+    #     res.append(pred)
+    #     print("--------")
 
     print("------SUMMARY------")
     print("TIME ELAPSED (mins): {}".format(int((tt - t) / 60)))
     print("TARGET INDEX: {}".format(args.target_index))
-    for tnet_name, (attack_acc, attack_val_acc) in zip(args.victim_net, res):
-        print(tnet_name, attack_acc, attack_val_acc)
+    for tnet_name, r in zip(args.target_net, res):
+        print(tnet_name, int(r == args.poison_label))

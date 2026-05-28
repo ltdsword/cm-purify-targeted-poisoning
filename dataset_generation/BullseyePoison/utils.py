@@ -1,4 +1,4 @@
-from models import *
+from dataset_generation.BullseyePoison.models import *
 from PIL import Image, ExifTags
 import os
 import cv2

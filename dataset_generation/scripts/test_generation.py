@@ -7,8 +7,8 @@ print("Running dry-run test mode to verify Python syntax, imports, and flag corr
 # but inject "dry run" arguments to instantly fail or instantly succeed.
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-wb_dir = os.path.join(os.path.dirname(BASE_DIR), "poisoning-gradient-matching")
-bp_dir = os.path.join(os.path.dirname(BASE_DIR), "BullseyePoison")
+wb_dir = os.path.join(BASE_DIR, "poisoning-gradient-matching")
+bp_dir = os.path.join(BASE_DIR, "BullseyePoison")
 
 try:
     print("\n--- Testing Witches Brew Invocation ---")

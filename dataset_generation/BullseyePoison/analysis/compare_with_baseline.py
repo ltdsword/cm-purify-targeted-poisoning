@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import xticks
 import matplotlib.ticker as mtick
-from utils import fetch_poison_bases, read_attack_stats, METHODS_COLORS, METHODS_NAMES, METHODS_LINESTYLES
+from dataset_generation.BullseyePoison.analysis.utils import fetch_poison_bases, read_attack_stats, METHODS_COLORS, METHODS_NAMES, METHODS_LINESTYLES
 import pandas as pd
 from scipy.stats import entropy
 

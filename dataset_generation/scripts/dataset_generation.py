@@ -151,7 +151,7 @@ def craft_wb():
     with open(os.path.join(CONFIG_DIR, 'wb_benchmark_setups.pickle'), 'rb') as f:
         wb_setups = pickle.load(f)
         
-    wb_root = os.path.join(os.path.dirname(BASE_DIR), 'poisoning-gradient-matching')
+    wb_root = os.path.join(BASE_DIR, 'poisoning-gradient-matching')
     os.makedirs(TRAIN_POISON_DIR, exist_ok=True)
 
     print(f"Total WB setups: {len(wb_setups)}")
@@ -189,7 +189,7 @@ def craft_bp():
     with open(os.path.join(CONFIG_DIR, 'bp_benchmark_setups.pickle'), 'rb') as f:
         bp_setups = pickle.load(f)
         
-    bp_root = os.path.join(os.path.dirname(BASE_DIR), 'BullseyePoison')
+    bp_root = os.path.join(BASE_DIR, 'BullseyePoison')
     os.makedirs(TRAIN_POISON_DIR, exist_ok=True)
 
     print(f"Total BP setups: {len(bp_setups)}")

@@ -6,8 +6,8 @@ import torchvision.transforms as transforms
 
 import argparse
 import os
-from models import *
-from dataloader import PoisonedDataset, FeatureSet
+from dataset_generation.BullseyePoison.models import *
+from dataset_generation.BullseyePoison.dataloader import PoisonedDataset, FeatureSet
 from utils import load_pretrained_net, fetch_all_external_targets
 import json
 import time
