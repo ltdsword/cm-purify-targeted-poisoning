@@ -30,7 +30,7 @@ $$
 After training, purification can be performed with one neural function evaluation:
 
 $$
-\hat{x}_0 = f_\theta(x_{t^*}, t^*).
+\hat{x}_0 = f_\theta(x_{t^\text{*}}, t^\text{*}).
 $$
 
 Therefore, the intended trade-off is:
