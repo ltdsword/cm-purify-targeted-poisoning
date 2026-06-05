@@ -59,11 +59,21 @@ if ! command -v conda >/dev/null 2>&1; then
 fi
 
 eval "$(conda shell.bash hook)"
-if ! conda env list | awk '{print $1}' | grep -qx "${ENV_NAME}"; then
-    conda create -y --name "${ENV_NAME}" python=3.10
+CONDA_BASE="$(conda info --base)"
+ENV_DIR="${CONDA_BASE}/envs/${ENV_NAME}"
+ENV_PYTHON="${ENV_DIR}/bin/python"
+
+if [[ ! -d "${ENV_DIR}/conda-meta" ]]; then
+    echo "Creating conda environment '${ENV_NAME}'."
+    conda create -y --name "${ENV_NAME}" python=3.10 pip
+elif [[ ! -x "${ENV_PYTHON}" ]]; then
+    echo "Conda environment '${ENV_NAME}' is missing Python; repairing it."
+    conda install -y --name "${ENV_NAME}" python=3.10 pip
 fi
 conda activate "${ENV_NAME}"
-python -m pip install -r "${REPO_DIR}/requirements.txt"
+export PATH="${ENV_DIR}/bin:${PATH}"
+
+"${ENV_PYTHON}" -m pip install -r "${REPO_DIR}/requirements.txt"
 
 export PYTHONUNBUFFERED=1
 cd "${REPO_DIR}"
@@ -72,17 +82,17 @@ cd "${REPO_DIR}"
 echo "=============================="
 echo "1. PREPARING CLEAN DATASETS..."
 echo "=============================="
-python -u "${SCRIPT_PATH}" --mode setup_clean
+"${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode setup_clean
 
 echo "=============================="
 echo "2. GENERATING WTICHES BREW POISONS..."
 echo "=============================="
-python -u "${SCRIPT_PATH}" --mode craft_wb
+"${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_wb
 
 echo "=============================="
 echo "3. GENERATING BULLSEYE POLYTOPE POISONS..."
 echo "=============================="
-python -u "${SCRIPT_PATH}" --mode craft_bp
+"${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_bp
 
 echo "=============================="
 echo "DONE! Results are in ${DATASET_GENERATION_DIR}/datasets/"
