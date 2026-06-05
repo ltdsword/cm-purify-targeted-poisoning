@@ -1,13 +1,13 @@
 # Consistency Model for Purifying Data Poisoning
 
-This research proposes a fast, poison-aware data purification framework based on a one-step pixel-space Consistency Model (CM). The goal is to sanitize an untrusted training dataset before downstream model training, while preserving the semantic content and clean labels of benign samples.
+This research proposes a fast, poison-aware data purification framework based on a **one-step pixel-space Consistency Model (CM)**. The goal is to sanitize an untrusted training dataset before downstream model training, while preserving the semantic content and clean labels of benign samples.
 
 The method is designed for targeted clean-label data poisoning attacks, especially:
 
-- **Witches' Brew / Gradient Matching**: a clean-label targeted poisoning attack for training-from-scratch settings.
-- **Bullseye Polytope**: a clean-label feature-space poisoning attack for transfer-learning settings.
+- **Witches' Brew / Gradient Matching:** a clean-label targeted poisoning attack for training-from-scratch settings.
+- **Bullseye Polytope:** a clean-label feature-space poisoning attack for transfer-learning settings.
 
-The central idea is to train a purifier that maps a noised and potentially poisoned image back to its clean counterpart in one neural function evaluation. This keeps the generative purification spirit of diffusion defenses, but avoids long iterative denoising chains.
+The central idea is to train a purifier that maps a noised and potentially poisoned image back to its clean counterpart in **one neural function evaluation**. This keeps the generative purification spirit of diffusion defenses, but avoids long iterative denoising chains.
 
 ---
 
@@ -30,19 +30,21 @@ $$
 After training, purification can be performed with one neural function evaluation:
 
 $$
-\hat{x}_0 = f_\theta(x_{t^\text{*}}, t^\text{*}).
+\hat{x}_0 = f_\theta(x_{t^{\star}}, t^{\star}).
 $$
 
 Therefore, the intended trade-off is:
 
-> Diffusion purification: many denoising steps  
-> Consistency purification: one denoising step
+```text
+Diffusion purification:   many denoising steps
+Consistency purification: one denoising step
+```
 
 ---
 
 ## Threat Model
 
-We focus on targeted clean-label poisoning attacks. The attacker injects a small fraction of imperceptibly perturbed training samples into the training set. The labels remain correct, but the poisoned samples cause a specific target test image to be misclassified after victim training.
+We focus on **targeted clean-label poisoning attacks**. The attacker injects a small fraction of imperceptibly perturbed training samples into the training set. The labels remain correct, but the poisoned samples cause a specific target test image to be misclassified after victim training.
 
 ### Attacker objective
 
@@ -53,7 +55,7 @@ Given a clean target image $x^t$, the attacker wants the victim model trained on
 The attacker can inject or modify a small number of training samples under a bounded perturbation constraint, for example:
 
 $$
-\|\Delta_i\|_\infty \le \epsilon.
+\lVert \Delta_i \rVert_\infty \leq \epsilon.
 $$
 
 The attack is clean-label, so the visible image content and label remain consistent.
@@ -68,22 +70,20 @@ The defender controls the training pipeline and can preprocess the dataset befor
 
 ### 1. Witches' Brew / Gradient Matching
 
-Witches' Brew is a targeted clean-label poisoning attack that works even when the victim model is trained from scratch. The key mechanism is gradient matching.
+Witches' Brew is a targeted clean-label poisoning attack that works even when the victim model is trained from scratch. The key mechanism is **gradient matching**.
 
 The attack tries to make the average gradient produced by poisoned samples align with the gradient of the target image under the adversarial label:
 
 $$
 \nabla_\theta \mathcal{L}(F(x^t, \theta), y^{adv})
 \approx
-\frac{1}{P}\sum_{i=1}^{P}
-\nabla_\theta \mathcal{L}(F(x_i + \Delta_i, \theta), y_i).
+\frac{1}{P}\sum_{i=1}^{P}\nabla_\theta \mathcal{L}(F(x_i + \Delta_i, \theta), y_i).
 $$
 
 Instead of matching exact gradient magnitudes, Witches' Brew maximizes cosine similarity between the target gradient and the poison gradient direction:
 
 $$
-B(\Delta, \theta)
-=
+B(\Delta, \theta) =
 1 -
 \frac{
 \left\langle
@@ -106,22 +106,19 @@ Bullseye Polytope is designed mainly for transfer learning. Instead of matching 
 Given substitute feature extractors $\phi^{(i)}$, a target image $x^t$, and $k$ clean base images $x_b^{(j)}$, Bullseye Polytope crafts poisoned samples $x_p^{(j)}$ so that the target representation is close to the mean poison representation:
 
 $$
-\min_{\{x_p^{(j)}\}}
-\frac{1}{2m}
-\sum_{i=1}^{m}
+\min_{\{x_p^{(j)}\}_{j=1}^{k}}
+\frac{1}{2m}\sum_{i=1}^{m}
 \frac{
-\left\|
-\phi^{(i)}(x^t) - \frac{1}{k}\sum_{j=1}^{k}\phi^{(i)}(x_p^{(j)})
-\right\|_2^2
+\left\|\phi^{(i)}(x^t) - \frac{1}{k}\sum_{j=1}^{k}\phi^{(i)}(x_p^{(j)})\right\|_2^2
 }{
 \left\|\phi^{(i)}(x^t)\right\|_2^2
-}
+}.
 $$
 
-subject to:
+Subject to:
 
 $$
-\|x_p^{(j)} - x_b^{(j)}\|_\infty \le \epsilon.
+\left\|x_p^{(j)} - x_b^{(j)}\right\|_\infty \leq \epsilon.
 $$
 
 By centering the target inside the poison feature cluster, the attack improves transferability and robustness to feature-space shifts.
@@ -136,13 +133,13 @@ $$
 \hat{x} = P_\theta(x_{untrusted}).
 $$
 
-The purifier is trained using an offline paired dataset of clean images and their corresponding poisoned versions. The key design choice is to treat poison perturbations as structured noise inside a consistency-model forward process.
+The purifier is trained using an offline paired dataset of clean images and their corresponding poisoned versions. The key design choice is to treat poison perturbations as structured noise inside a Consistency Model forward process.
 
 The pipeline has three components:
 
-1. **Offline poison-pair dataset** containing clean-poison pairs.
-2. **Poison-aware forward process** that injects poison residuals as structured corruption.
-3. **One-step consistency purifier** trained to recover the clean image directly.
+1. An offline poison-pair dataset containing clean-poison pairs.
+2. A poison-aware forward process that injects poison residuals as structured corruption.
+3. A one-step consistency purifier trained to recover the clean image directly.
 
 ---
 
@@ -157,18 +154,14 @@ $$
 We generate a paired purifier-training dataset:
 
 $$
-D_{pair}
-=
-\left\{
-\left(x_{clean}^{(i)}, x_{poison}^{(i)}, y^{(i)}, m^{(i)}\right)
-\right\}_{i=1}^{M},
+D_{pair} = \{(x_{clean}^{(i)}, x_{poison}^{(i)}, y^{(i)}, m^{(i)})\}_{i=1}^{M}.
 $$
 
 where:
 
-- $x_{clean}^{(i)}$ is the original clean image,
-- $x_{poison}^{(i)}$ is the poisoned counterpart,
-- $y^{(i)}$ is the clean label,
+- $x_{clean}^{(i)}$ is the original clean image.
+- $x_{poison}^{(i)}$ is the poisoned counterpart.
+- $y^{(i)}$ is the clean label.
 - $m^{(i)}$ stores metadata such as attack type, target class, poison class, random seed, and perturbation bound.
 
 The poison residual is:
@@ -179,9 +172,9 @@ $$
 
 The paired dataset contains:
 
-- Witches' Brew poison-clean pairs,
-- Bullseye Polytope poison-clean pairs,
-- clean identity pairs where $x_{poison} = x_{clean}$.
+- Witches' Brew poison-clean pairs.
+- Bullseye Polytope poison-clean pairs.
+- Clean identity pairs where $x_{poison} = x_{clean}$.
 
 The clean identity pairs are important because the purifier will be applied blindly to every image. It should learn to preserve benign images instead of unnecessarily modifying them.
 
@@ -204,7 +197,7 @@ This poison bank is not meant to represent one single victim dataset. Instead, i
 CIFAR-10 contains 5,000 training images per class. For each class $c$, all indices are shuffled with a fixed random seed and allocated into non-overlapping blocks:
 
 | Index range after shuffle | Usage |
-|---|---|
+|---:|---|
 | `[0, 499]` | Witches' Brew training case 1 |
 | `[500, 999]` | Witches' Brew training case 2 |
 | `[1000, 1499]` | Witches' Brew evaluation case |
@@ -246,30 +239,24 @@ $$
 The poison-aware forward process is:
 
 $$
-x_t^*
-=
-\sqrt{\bar{\alpha}_t}x_{clean}
-+
-\sqrt{1 - \bar{\alpha}_t}(\epsilon + \gamma_a\delta),
-\quad
-\epsilon \sim \mathcal{N}(0, I),
+x_t^{\ast} = \sqrt{\bar{\alpha}_t}x_{clean} + \sqrt{1 - \bar{\alpha}_t}(\epsilon + \gamma_a\delta), \quad \epsilon \sim \mathcal{N}(0, I).
 $$
 
 where:
 
-- $a \in \{WB, BP, clean\}$ is the example type,
+- $a \in \{WB, BP, clean\}$ is the example type.
 - $\gamma_a$ controls the strength of the poison residual.
 
 As $t \rightarrow 0$:
 
 $$
-\sqrt{1 - \bar{\alpha}_t} \rightarrow 0,
+\sqrt{1 - \bar{\alpha}_t} \rightarrow 0.
 $$
 
-so both Gaussian noise and poison residual vanish:
+Therefore, both Gaussian noise and poison residual vanish:
 
 $$
-x_t^* \rightarrow x_{clean}.
+x_t^{\ast} \rightarrow x_{clean}.
 $$
 
 This naturally satisfies:
@@ -281,7 +268,7 @@ $$
 The model is trained to predict:
 
 $$
-\hat{x}_0 = f_\theta(x_t^*, t) \approx x_{clean}.
+\hat{x}_0 = f_\theta(x_t^{\ast}, t) \approx x_{clean}.
 $$
 
 ---
@@ -295,22 +282,17 @@ The purifier uses a combination of consistency, reconstruction, semantic, and id
 The student and EMA teacher should map different points on the same trajectory to the same clean origin:
 
 $$
-\mathcal{L}_{distill}
-=
-d\left(
- f_\theta(x^*_{t_{n+1}}, t_{n+1}),
- \operatorname{sg}\left[f_{\theta^-}(\hat{x}^{\Psi}_{t_n}, t_n)\right]
-\right),
+\mathcal{L}_{distill} = d\left(f_\theta(x_{t_{n+1}}^{\ast}, t_{n+1}), \mathrm{sg}\left[f_{\theta^-}(\hat{x}_{t_n}^{\Psi}, t_n)\right]\right).
 $$
 
-where $\operatorname{sg}[\cdot]$ stops gradients and $\Psi$ is an ODE solver used to estimate a shallower timestep.
+Here, $\mathrm{sg}[\cdot]$ means stop-gradient, and $\Psi$ is an ODE solver used to estimate a shallower timestep.
 
 ### 2. Clean reconstruction loss
 
 The model directly learns to reconstruct the clean image:
 
 $$
-\mathcal{L}_{rec} = \|\hat{x}_0 - x_{clean}\|_1.
+\mathcal{L}_{rec} = \left\|\hat{x}_0 - x_{clean}\right\|_1.
 $$
 
 ### 3. Label preservation loss
@@ -326,51 +308,39 @@ $$
 For clean identity pairs, $\delta = 0$. The purifier should preserve clean samples:
 
 $$
-\mathcal{L}_{id}
-=
-\|f_\theta(x_t^{clean}, t) - x_{clean}\|_1,
+\mathcal{L}_{id} = \left\|f_\theta(x_t^{clean}, t) - x_{clean}\right\|_1.
 $$
 
 where:
 
 $$
-x_t^{clean}
-=
-\sqrt{\bar{\alpha}_t}x_{clean}
-+
-\sqrt{1 - \bar{\alpha}_t}\epsilon.
+x_t^{clean} = \sqrt{\bar{\alpha}_t}x_{clean} + \sqrt{1 - \bar{\alpha}_t}\epsilon.
 $$
 
 ### Full objective
 
 $$
-\mathcal{L}_{total}
-=
-\lambda_1\mathcal{L}_{distill}
-+
-\lambda_2\mathcal{L}_{rec}
-+
-\lambda_3\mathcal{L}_{cls}
-+
-\lambda_4\mathcal{L}_{id}.
+\mathcal{L}_{total} = \lambda_1\mathcal{L}_{distill} + \lambda_2\mathcal{L}_{rec} + \lambda_3\mathcal{L}_{cls} + \lambda_4\mathcal{L}_{id}.
 $$
 
 ---
 
 ## Algorithm 1: Offline Poison-Pair Dataset Generation
 
+**Input:**
+
+- Clean CIFAR-10 dataset `D_clean`
+- Witches' Brew generator `A_WB`
+- Bullseye Polytope generator `A_BP`
+- Perturbation bound `epsilon`
+- Fixed random seed
+
+**Output:**
+
+- Paired purifier-training dataset `D_pair`
+- Held-out poison evaluation cases
+
 ```text
-Input:
-  Clean CIFAR-10 dataset D_clean
-  Witches' Brew generator A_WB
-  Bullseye Polytope generator A_BP
-  Perturbation bound epsilon
-  Fixed random seed
-
-Output:
-  Paired purifier-training dataset D_pair
-  Held-out poison evaluation cases
-
 1. Initialize D_pair = empty set.
 2. For each class c in {0, ..., 9}:
    a. Collect all training indices with label c.
@@ -400,25 +370,27 @@ Output:
 
 ## Algorithm 2: Poison-Aware Consistency Distillation
 
+**Input:**
+
+- Offline paired dataset `D_pair`
+- Student purifier `f_theta`
+- EMA teacher `f_theta_minus`
+- Frozen classifier `C`
+- ODE solver `Psi`
+- Timestep schedule `{t_n}`
+
+**Output:**
+
+- Trained purifier `P_theta`
+
 ```text
-Input:
-  Offline paired dataset D_pair
-  Student purifier f_theta
-  EMA teacher f_theta_minus
-  Frozen classifier C
-  ODE solver Psi
-  Timestep schedule {t_n}
-
-Output:
-  Trained purifier P_theta
-
 1. While not converged:
    a. Sample minibatch {(x_clean, x_poison, y, a)} from D_pair.
    b. Compute poison residual delta = x_poison - x_clean.
    c. Sample timestep t = t_{n+1}.
    d. Sample Gaussian noise epsilon ~ N(0, I).
-   e. Construct poison-aware noised input x_t^*.
-   f. Predict clean image x_hat_0 = f_theta(x_t^*, t).
+   e. Construct poison-aware noised input x_t_ast.
+   f. Predict clean image x_hat_0 = f_theta(x_t_ast, t).
    g. Estimate shallower teacher input using solver Psi.
    h. Compute consistency distillation loss.
    i. Compute reconstruction loss.
@@ -435,32 +407,46 @@ Output:
 
 ## Algorithm 3: Inference-Time Dataset Sanitization
 
+**Input:**
+
+- Untrusted dataset `D_untrusted = {(x_untrusted, y)}`
+- Trained purifier `f_theta`
+- Target timestep `t_star`
+
+**Output:**
+
+- Sanitized dataset `D_san`
+
 ```text
-Input:
-  Untrusted dataset D_untrusted = {(x_untrusted, y)}
-  Trained purifier f_theta
-  Target timestep t^*
-
-Output:
-  Sanitized dataset D_san
-
 1. Initialize D_san = empty set.
 2. For each minibatch from D_untrusted:
    a. Sample Gaussian noise epsilon ~ N(0, I).
-   b. Add forward diffusion noise up to t^*:
+   b. Add forward diffusion noise up to t_star:
 
-      x_{t^*} = sqrt(alpha_bar_{t^*}) x_untrusted
-                + sqrt(1 - alpha_bar_{t^*}) epsilon
+      x_t_star = sqrt(alpha_bar_t_star) * x_untrusted
+                 + sqrt(1 - alpha_bar_t_star) * epsilon
 
    c. Perform one-step purification:
 
-      x_hat = f_theta(x_{t^*}, t^*)
+      x_hat = f_theta(x_t_star, t_star)
 
    d. Store (x_hat, y) in D_san.
 
 3. Train downstream victim model on D_san.
 4. Return D_san.
 ```
+
+The mathematical version of the inference noising step is:
+
+$$
+x_{t^{\star}} = \sqrt{\bar{\alpha}_{t^{\star}}}x_{untrusted} + \sqrt{1 - \bar{\alpha}_{t^{\star}}}\epsilon.
+$$
+
+The one-step purification step is:
+
+$$
+\hat{x} = f_\theta(x_{t^{\star}}, t^{\star}).
+$$
 
 ---
 
@@ -494,9 +480,9 @@ Compare:
 
 The official CIFAR-10 test set remains untouched. It is used only after downstream victim training to measure:
 
-- clean test accuracy,
-- target misclassification rate,
-- adversarial-label confidence.
+- Clean test accuracy.
+- Target misclassification rate.
+- Adversarial-label confidence.
 
 ---
 
@@ -517,35 +503,41 @@ Recommended metrics:
 
 ## Expected Advantages
 
-- **Fast inference**: one neural function evaluation instead of many diffusion denoising steps.
-- **Dataset-level scalability**: purification can be batched on GPU.
-- **Attack diversity**: purifier training uses both Witches' Brew and Bullseye Polytope poisons.
-- **Clean-image preservation**: identity pairs reduce unnecessary modification of benign samples.
-- **Attack-agnostic deployment**: the trained purifier is applied blindly to all images.
+- **Fast inference:** one neural function evaluation instead of many diffusion denoising steps.
+- **Dataset-level scalability:** purification can be batched on GPU.
+- **Attack diversity:** purifier training uses both Witches' Brew and Bullseye Polytope poisons.
+- **Clean-image preservation:** identity pairs reduce unnecessary modification of benign samples.
+- **Attack-agnostic deployment:** the trained purifier is applied blindly to all images.
 
 ---
 
 ## Key Risks and Limitations
 
-This method is promising but not guaranteed to work without careful validation. The main risks are:
+This method is promising but not guaranteed to work without careful validation. The main risks are listed below.
 
-1. **Distribution mismatch**  
-   The purifier is trained on generated WB/BP poison distributions. It may not generalize to stronger adaptive poisons or unseen poison mechanisms.
+### Distribution mismatch
 
-2. **Clean accuracy degradation**  
-   If the timestep $t^*$ or residual strength is too large, the purifier may remove useful semantic details and reduce downstream accuracy.
+The purifier is trained on generated WB/BP poison distributions. It may not generalize to stronger adaptive poisons or unseen poison mechanisms.
 
-3. **Residual scaling mismatch**  
-   During training, the model sees the exact residual $\delta = x_{poison} - x_{clean}$. At inference, it receives only an untrusted image and Gaussian noise. The deployment distribution may differ from the training corruption distribution.
+### Clean accuracy degradation
 
-4. **Adaptive attack risk**  
-   If the attacker knows the purifier, they may craft poisons that survive the CM transformation.
+If the timestep $t^{\star}$ or residual strength is too large, the purifier may remove useful semantic details and reduce downstream accuracy.
 
-5. **CIFAR-10 resolution**  
-   CIFAR-10 images are small, so aggressive purification may visibly alter semantic content. Timestep and loss weights must be tuned carefully.
+### Residual scaling mismatch
 
-6. **Paired poison generation cost**  
-   Training the purifier requires expensive offline generation of many poison-clean pairs.
+During training, the model sees the exact residual $\delta = x_{poison} - x_{clean}$. At inference, it receives only an untrusted image and Gaussian noise. The deployment distribution may differ from the training corruption distribution.
+
+### Adaptive attack risk
+
+If the attacker knows the purifier, they may craft poisons that survive the CM transformation.
+
+### CIFAR-10 resolution
+
+CIFAR-10 images are small, so aggressive purification may visibly alter semantic content. Timestep and loss weights must be tuned carefully.
+
+### Paired poison generation cost
+
+Training the purifier requires expensive offline generation of many poison-clean pairs.
 
 ---
 
@@ -555,9 +547,9 @@ This method is promising but not guaranteed to work without careful validation. 
 
 Before generating expensive WB/BP poisons, train the CM purifier on clean images with synthetic bounded perturbations. Verify that:
 
-- clean images are preserved,
-- small perturbations are removed,
-- classifier accuracy does not collapse.
+- Clean images are preserved.
+- Small perturbations are removed.
+- Classifier accuracy does not collapse.
 
 ### Stage 2: Small WB/BP pilot
 
@@ -583,12 +575,12 @@ Scale to the planned 30,000-pair dataset:
 
 Tune:
 
-- $t^*$,
-- $\gamma_{WB}$,
-- $\gamma_{BP}$,
-- $\lambda_1, \lambda_2, \lambda_3, \lambda_4$,
-- EMA decay,
-- timestep schedule.
+- $t^{\star}$
+- $\gamma_{WB}$
+- $\gamma_{BP}$
+- $\lambda_1, \lambda_2, \lambda_3, \lambda_4$
+- EMA decay
+- Timestep schedule
 
 ### Stage 4: Defense evaluation
 
@@ -700,20 +692,20 @@ The intended research contribution is:
 
 More specifically, the method differs from standard diffusion denoising and prior generative poison defenses by combining:
 
-1. train-time data poison purification,
-2. one-step CM inference,
-3. explicit paired WB/BP poison-clean training,
-4. poison residuals modeled as structured noise in the forward process,
-5. clean identity preservation for blind dataset-wide sanitization.
+- Train-time data poison purification.
+- One-step CM inference.
+- Explicit paired WB/BP poison-clean training.
+- Poison residuals modeled as structured noise in the forward process.
+- Clean identity preservation for blind dataset-wide sanitization.
 
 ---
 
 ## References
 
-- Jonas Geiping et al. **Witches' Brew: Industrial Scale Data Poisoning via Gradient Matching.** ICLR 2021.
-- Hojjat Aghakhani et al. **Bullseye Polytope: A Scalable Clean-Label Poisoning Attack with Improved Transferability.** IEEE EuroS&P 2021.
-- Yang Song et al. **Consistency Models.** ICML 2023.
-- Chun Tong Lei et al. **Instant Adversarial Purification with Adversarial Consistency Distillation.** CVPR 2025.
-- Sunay Bhat et al. **PureGen: Universal Data Purification for Train-Time Poison Defense via Generative Model Dynamics.** NeurIPS 2024.
-- Sanghyun Hong et al. **Certified Robustness to Clean-Label Poisoning Using Diffusion Denoising.** 2024.
-- Omead Pooladzandi et al. **PureEBM: Universal Poison Purification via Mid-Run Dynamics of Energy-Based Models.** 2024.
+1. Jonas Geiping et al. **Witches' Brew: Industrial Scale Data Poisoning via Gradient Matching.** ICLR 2021.
+2. Hojjat Aghakhani et al. **Bullseye Polytope: A Scalable Clean-Label Poisoning Attack with Improved Transferability.** IEEE EuroS&P 2021.
+3. Yang Song et al. **Consistency Models.** ICML 2023.
+4. Chun Tong Lei et al. **Instant Adversarial Purification with Adversarial Consistency Distillation.** CVPR 2025.
+5. Sunay Bhat et al. **PureGen: Universal Data Purification for Train-Time Poison Defense via Generative Model Dynamics.** NeurIPS 2024.
+6. Sanghyun Hong et al. **Certified Robustness to Clean-Label Poisoning Using Diffusion Denoising.** 2024.
+7. Omead Pooladzandi et al. **PureEBM: Universal Poison Purification via Mid-Run Dynamics of Energy-Based Models.** 2024.
