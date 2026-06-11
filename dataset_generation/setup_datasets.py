@@ -23,7 +23,7 @@ def main():
         'others': train_list,
         'target': test_list
     }
-    torch.save(bp_data, '/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth')
+    torch.save(bp_data, '/cm-purify-targeted-poisoning/dataset_generation/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth')
     print("Saved dataset_generation/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth")
 
     # 2. Build explicit Witches Brew Benchmark files
@@ -67,13 +67,13 @@ def main():
         }
         
         # Save to wb config dictionaries
-        fn_t1 = f'/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/configs/wb_c{cls}_train1.pickle'
+        fn_t1 = f'/cm-purify-targeted-poisoning/dataset_generation/configs/wb_c{cls}_train1.pickle'
         with open(fn_t1, 'wb') as f: pickle.dump([config_t1], f)
             
-        fn_t2 = f'/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/configs/wb_c{cls}_train2.pickle'
+        fn_t2 = f'/cm-purify-targeted-poisoning/dataset_generation/configs/wb_c{cls}_train2.pickle'
         with open(fn_t2, 'wb') as f: pickle.dump([config_t2], f)
             
-        fn_e = f'/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/configs/wb_c{cls}_eval.pickle'
+        fn_e = f'/cm-purify-targeted-poisoning/dataset_generation/configs/wb_c{cls}_eval.pickle'
         with open(fn_e, 'wb') as f: pickle.dump([config_e], f)
             
     print("Saved WB Configs to /global/configs/")

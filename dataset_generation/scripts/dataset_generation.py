@@ -5,10 +5,12 @@ import torchvision
 import random
 import argparse
 import subprocess
+import sys
 from PIL import Image
 
 # Directory configurations
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO_DIR = os.path.dirname(BASE_DIR)
 DATA_ROOT = os.path.join(BASE_DIR, "datasets")
 CONFIG_DIR = os.path.join(BASE_DIR, "configs")
 SLURM_DIR = os.path.join(BASE_DIR, "slurm_jobs")
@@ -19,6 +21,27 @@ TRAIN_POISON_DIR = os.path.join(DATA_ROOT, "train", "poisons")
 TEST_DIR = os.path.join(DATA_ROOT, "test")
 
 SEED = 121 
+
+def _all_files_exist(paths):
+    return all(os.path.exists(path) for path in paths)
+
+def clean_train_name(class_idx, image_idx):
+    return f"clean_c{class_idx}_{image_idx}.png"
+
+def wb_name(class_idx, image_idx):
+    return f"wb_c{class_idx}_{image_idx}.png"
+
+def bp_name(class_idx, group_idx, image_idx):
+    return f"bp_c{class_idx}_g{group_idx}_{image_idx}.png"
+
+def target_name(class_idx, image_idx):
+    return f"target_c{class_idx}_{image_idx}.png"
+
+def wb_eval_dir(class_idx):
+    return os.path.join(TEST_DIR, f"WB_c{class_idx}")
+
+def bp_eval_dir(class_idx, group_idx):
+    return os.path.join(TEST_DIR, f"BP_c{class_idx}_g{group_idx}")
 
 def setup_seed(seed):
     random.seed(seed)
@@ -66,7 +89,7 @@ def setup_clean_datasets():
         # Save Clean CM directly
         for idx in clean_cm_pool:
             img, _ = train_set[idx]
-            img.save(os.path.join(TRAIN_CLEAN_DIR, f"clean_baselines_c{c}_{idx}.png"))
+            img.save(os.path.join(TRAIN_CLEAN_DIR, clean_train_name(c, idx)))
         
         # Fetch unique target helper
         valid_test_indices = np.where(test_labels != c)[0]
@@ -88,22 +111,22 @@ def setup_clean_datasets():
             t_idx, t_cls, t_img = pull_target()
             struct = {
                 'base indices': pool.tolist(), 'target index': t_idx, 
-                'target class': t_cls, 'base class': c, 'desc': f'WB_{suffix}', 'is_train': is_train
+                'target class': t_cls, 'base class': c, 'desc': suffix, 'is_train': is_train
             }
             wb_setups.append(struct)
             
             # Save clean bases to TRAIN cleanly
             for b_idx in pool:
                 img, _ = train_set[b_idx]
-                dest = TRAIN_CLEAN_DIR if is_train else os.path.join(TEST_DIR, f"WB_c{c}_{suffix}", "clean")
+                dest = TRAIN_CLEAN_DIR if is_train else os.path.join(wb_eval_dir(c), "clean")
                 if not is_train: os.makedirs(dest, exist_ok=True)
-                img.save(os.path.join(dest, f"wb_c{c}_{suffix}_base_{b_idx}.png"))
+                img.save(os.path.join(dest, wb_name(c, b_idx)))
                 
             # If Eval, save the Target image directly
             if not is_train:
-                t_dest = os.path.join(TEST_DIR, f"WB_c{c}_{suffix}", "target")
+                t_dest = os.path.join(wb_eval_dir(c), "target")
                 os.makedirs(t_dest, exist_ok=True)
-                t_img.save(os.path.join(t_dest, f"target_c{t_cls}_id{t_idx}.png"))
+                t_img.save(os.path.join(t_dest, target_name(t_cls, t_idx)))
 
         # ------------------------------------------
         # BP Setup 
@@ -119,7 +142,7 @@ def setup_clean_datasets():
             })
             for b_idx in sub_indices:
                 img, _ = train_set[b_idx]
-                img.save(os.path.join(TRAIN_CLEAN_DIR, f"bp_train_c{c}_g{g}_base_{b_idx}.png"))
+                img.save(os.path.join(TRAIN_CLEAN_DIR, bp_name(c, g, b_idx)))
                 
         # Eval (2 distinct groups of 10)
         for g in range(2):
@@ -130,14 +153,14 @@ def setup_clean_datasets():
                 'target class': t_cls, 'base class': c, 'desc': 'BP_Eval', 
                 'batch_group': g, 'is_train': False, 'start_idx': 2500 + (g*10)
             })
-            dest = os.path.join(TEST_DIR, f"BP_c{c}_eval_g{g}")
+            dest = bp_eval_dir(c, g)
             os.makedirs(os.path.join(dest, "clean"), exist_ok=True)
             t_dest = os.path.join(dest, "target")
             os.makedirs(t_dest, exist_ok=True)
-            t_img.save(os.path.join(t_dest, f"target_c{t_cls}_id{t_idx}.png"))
+            t_img.save(os.path.join(t_dest, target_name(t_cls, t_idx)))
             for b_idx in sub_indices:
                 img, _ = train_set[b_idx]
-                img.save(os.path.join(dest, "clean", f"bp_eval_c{c}_g{g}_base_{b_idx}.png"))
+                img.save(os.path.join(dest, "clean", bp_name(c, g, b_idx)))
 
     with open(os.path.join(CONFIG_DIR, 'wb_benchmark_setups.pickle'), 'wb') as f:
         pickle.dump(wb_setups, f)
@@ -157,19 +180,38 @@ def craft_wb():
     print(f"Total WB setups: {len(wb_setups)}")
     for i, setup in enumerate(wb_setups):
         print(f"Crafting WB {i+1}/{len(wb_setups)} - Class {setup['base class']} {setup['desc']}")
-        
-        cmd = [
-            "python", "brew_poison.py", 
-            "--name", f"wb_{i}", 
-            "--benchmark", os.path.join(CONFIG_DIR, 'wb_benchmark_setups.pickle'), 
-            "--save", "benchmark", "--vruns", "0", "--eps", "8", 
-            "--benchmark_idx", str(i), "--ensemble", "1", "--net", "ResNet18"
-        ]
-        
-        subprocess.run(cmd, cwd=wb_root, check=True)
-        
-        result_dir = os.path.join(wb_root, 'benchmark_results', f"wb_{i}_ResNet18", str(i))
+
+        if setup['is_train']:
+            expected_outputs = [
+                os.path.join(TRAIN_POISON_DIR, wb_name(setup['base class'], base_idx))
+                for base_idx in setup['base indices']
+            ]
+        else:
+            dest = os.path.join(wb_eval_dir(setup['base class']), "poisons")
+            expected_outputs = [
+                os.path.join(dest, wb_name(setup['base class'], base_idx))
+                for base_idx in setup['base indices']
+            ]
+
+        if _all_files_exist(expected_outputs):
+            print(f"WB {i+1}/{len(wb_setups)} already exported; skipping.")
+            continue
+
+        result_dir = os.path.join(wb_root, 'poisons', 'benchmark_results', f"wb_{i}_ResNet18", str(i))
         poisons_file = os.path.join(result_dir, 'poisons.pickle')
+
+        if os.path.exists(poisons_file):
+            print(f"Found existing WB result at {poisons_file}; exporting PNGs.")
+        else:
+            cmd = [
+                sys.executable, "brew_poison.py",
+                "--name", f"wb_{i}",
+                "--benchmark", os.path.join(CONFIG_DIR, 'wb_benchmark_setups.pickle'),
+                "--save", "benchmark", "--vruns", "0", "--eps", "8",
+                "--benchmark_idx", str(i), "--ensemble", "1", "--net", "ResNet18"
+            ]
+
+            subprocess.run(cmd, cwd=wb_root, check=True)
         
         if os.path.exists(poisons_file):
             with open(poisons_file, 'rb') as pf:
@@ -178,11 +220,13 @@ def craft_wb():
             for p_num, (p_img, p_label) in enumerate(poison_data):
                 base_idx = setup['base indices'][p_num]
                 if setup['is_train']:
-                    p_img.save(os.path.join(TRAIN_POISON_DIR, f"wb_c{setup['base class']}_{setup['desc']}_base_{base_idx}.png"))
+                    p_img.save(os.path.join(TRAIN_POISON_DIR, wb_name(setup['base class'], base_idx)))
                 else: 
-                    dest = os.path.join(TEST_DIR, f"WB_c{setup['base class']}_{setup['desc']}", "poisons")
+                    dest = os.path.join(wb_eval_dir(setup['base class']), "poisons")
                     os.makedirs(dest, exist_ok=True)
-                    p_img.save(os.path.join(dest, f"wb_c{setup['base class']}_{setup['desc']}_base_{base_idx}.png"))
+                    p_img.save(os.path.join(dest, wb_name(setup['base class'], base_idx)))
+        else:
+            raise FileNotFoundError(f"Expected WB poisons were not found at {poisons_file}")
 
 
 def craft_bp():
@@ -192,56 +236,110 @@ def craft_bp():
     bp_root = os.path.join(BASE_DIR, 'BullseyePoison')
     os.makedirs(TRAIN_POISON_DIR, exist_ok=True)
     
-    # Ensure model-chks exists for BullseyePoison
+    # Ensure model-chks exists for BullseyePoison. The downloaded zip may
+    # extract as model-chks-release, but craft_poisons_transfer.py loads
+    # from model-chks by default.
     bp_model_chks = os.path.join(bp_root, 'model-chks')
-    if not os.path.exists(bp_model_chks) or not os.listdir(bp_model_chks):
-        print("model-chks missing or empty for BullseyePoison. Downloading from Google Drive...")
+    bp_model_chks_alias = os.path.join(bp_root, 'model-chks-release')
+
+    def ensure_checkpoint_alias():
+        if os.path.exists(bp_model_chks_alias):
+            return
         try:
-            import gdown
-        except ImportError:
-            subprocess.run(["pip", "install", "gdown"], check=True)
-            import gdown
-            
-        zip_path = os.path.join(bp_root, "model_chks_release.zip")
-        gdown.download(id="1TwxNbJ1arDNQrBJdt5AFeaAbKC65HOko", output=zip_path, quiet=False)
-        
-        print("Extracting checkpoints...")
-        import zipfile
+            os.symlink('model-chks', bp_model_chks_alias)
+        except OSError:
+            pass
+
+    def has_checkpoints(path):
+        return os.path.isdir(path) and bool(os.listdir(path))
+
+    def populate_bp_checkpoints():
         import shutil
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(bp_root)
-        
-        extracted_dir = os.path.join(bp_root, 'model_chks_release')
+        extracted_dirs = [
+            os.path.join(bp_root, 'model-chks-release'),
+            os.path.join(bp_root, 'model_chks_release'),
+        ]
         os.makedirs(bp_model_chks, exist_ok=True)
-        if os.path.exists(extracted_dir):
+        for extracted_dir in extracted_dirs:
+            if extracted_dir == bp_model_chks:
+                continue
+            if os.path.islink(extracted_dir):
+                continue
+            if not os.path.isdir(extracted_dir):
+                continue
             for file_name in os.listdir(extracted_dir):
                 shutil.move(os.path.join(extracted_dir, file_name), bp_model_chks)
             shutil.rmtree(extracted_dir)
-        os.remove(zip_path)
+        ensure_checkpoint_alias()
+        return os.listdir(bp_model_chks)
+
+    if not has_checkpoints(bp_model_chks):
+        if populate_bp_checkpoints():
+            print("Moved extracted BullseyePoison checkpoints into model-chks.")
+        else:
+            print("model-chks missing or empty for BullseyePoison. Downloading from Google Drive...")
+            try:
+                import gdown
+            except ImportError:
+                subprocess.run([sys.executable, "-m", "pip", "install", "gdown"], check=True)
+                import gdown
+                
+            zip_path = os.path.join(bp_root, "model_chks_release.zip")
+            gdown.download(id="1TwxNbJ1arDNQrBJdt5AFeaAbKC65HOko", output=zip_path, quiet=False)
+            
+            print("Extracting checkpoints...")
+            import zipfile
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(bp_root)
+            populate_bp_checkpoints()
+            os.remove(zip_path)
         print("Checkpoints downloaded and extracted successfully.")
+    else:
+        ensure_checkpoint_alias()
 
     print(f"Total BP setups: {len(bp_setups)}")
     for i, setup in enumerate(bp_setups):
         print(f"Crafting BP {i+1}/{len(bp_setups)} - Class {setup['base class']} Group {setup['batch_group']}")
+
+        if setup['is_train']:
+            expected_outputs = [
+                os.path.join(TRAIN_POISON_DIR, bp_name(setup['base class'], setup['batch_group'], base_idx))
+                for base_idx in setup['base indices']
+            ]
+        else:
+            dest = os.path.join(bp_eval_dir(setup['base class'], setup['batch_group']), "poisons")
+            expected_outputs = [
+                os.path.join(dest, bp_name(setup['base class'], setup['batch_group'], base_idx))
+                for base_idx in setup['base indices']
+            ]
+
+        if _all_files_exist(expected_outputs):
+            print(f"BP {i+1}/{len(bp_setups)} already exported; skipping.")
+            continue
         
         export_dir = os.path.join(bp_root, "benchmark_results", f"bp_{i}")
         env = os.environ.copy()
         env['BP_EXPORT_DIR'] = export_dir
-        
-        cmd = [
-            "python", "craft_poisons_transfer.py", 
-            "--target-label", str(setup['target class']),
-            "--target-index", str(setup['target index']),
-            "--poison-label", str(setup['base class']),
-            "--start-idx", str(setup['start_idx']),
-            "--poison-num", "10",
-            "--substitute-nets", "ResNet18",
-            "--target-net", "ResNet18"
-        ]
-        
-        subprocess.run(cmd, cwd=bp_root, env=env, check=True)
-        
+        env['PYTHONPATH'] = REPO_DIR + os.pathsep + env.get('PYTHONPATH', '')
         poisons_file = os.path.join(export_dir, 'poisons.pickle')
+
+        if os.path.exists(poisons_file):
+            print(f"Found existing BP result at {poisons_file}; exporting PNGs.")
+        else:
+            cmd = [
+                sys.executable, "craft_poisons_transfer.py",
+                "--target-label", str(setup['target class']),
+                "--target-index", str(setup['target index']),
+                "--poison-label", str(setup['base class']),
+                "--start-idx", str(setup['start_idx']),
+                "--poison-num", "10",
+                "--substitute-nets", "ResNet18",
+                "--target-net", "ResNet18",
+                "--model-resume-path", "model-chks",
+            ]
+
+            subprocess.run(cmd, cwd=bp_root, env=env, check=True)
+
         if os.path.exists(poisons_file):
             import torch
             with open(poisons_file, 'rb') as pf:
@@ -258,11 +356,13 @@ def craft_bp():
                     
                 base_idx = setup['base indices'][p_num] 
                 if setup['is_train']:
-                    p_img.save(os.path.join(TRAIN_POISON_DIR, f"bp_train_c{setup['base class']}_g{setup['batch_group']}_base_{base_idx}.png"))
+                    p_img.save(os.path.join(TRAIN_POISON_DIR, bp_name(setup['base class'], setup['batch_group'], base_idx)))
                 else:
-                    dest = os.path.join(TEST_DIR, f"BP_c{setup['base class']}_eval_g{setup['batch_group']}", "poisons")
+                    dest = os.path.join(bp_eval_dir(setup['base class'], setup['batch_group']), "poisons")
                     os.makedirs(dest, exist_ok=True)
-                    p_img.save(os.path.join(dest, f"bp_eval_c{setup['base class']}_g{setup['batch_group']}_base_{base_idx}.png"))
+                    p_img.save(os.path.join(dest, bp_name(setup['base class'], setup['batch_group'], base_idx)))
+        else:
+            raise FileNotFoundError(f"Expected BP poisons were not found at {poisons_file}")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

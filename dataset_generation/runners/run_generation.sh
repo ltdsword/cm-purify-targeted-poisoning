@@ -51,6 +51,13 @@ echo "Logs directory: ${LOG_DIR}"
 echo "Main log: ${MAIN_LOG}"
 echo "Error log: ${ERR_LOG}"
 echo "Started at: $(date -Is)"
+echo "SLURM job GPUs: ${SLURM_JOB_GPUS:-<unset>}"
+echo "SLURM step GPUs: ${SLURM_STEP_GPUS:-<unset>}"
+echo "CUDA_VISIBLE_DEVICES before setup: ${CUDA_VISIBLE_DEVICES:-<unset>}"
+
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi || true
+fi
 
 # Load conda environment
 if ! command -v conda >/dev/null 2>&1; then
@@ -72,8 +79,54 @@ elif [[ ! -x "${ENV_PYTHON}" ]]; then
 fi
 conda activate "${ENV_NAME}"
 export PATH="${ENV_DIR}/bin:${PATH}"
+export PYTHONNOUSERSITE=1
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
 
-"${ENV_PYTHON}" -m pip install -r "${REPO_DIR}/requirements.txt"
+REQ_NO_TORCH="$(mktemp)"
+PIP_CONSTRAINTS="$(mktemp)"
+trap 'rm -f "${REQ_NO_TORCH}" "${PIP_CONSTRAINTS}"' EXIT
+grep -vE '^[[:space:]]*(torch|torchvision)([<>=!~ ].*)?$' "${REPO_DIR}/requirements.txt" > "${REQ_NO_TORCH}"
+cat > "${PIP_CONSTRAINTS}" <<'EOF'
+numpy<2
+EOF
+
+"${ENV_PYTHON}" -m pip install --upgrade pip
+"${ENV_PYTHON}" - <<'PY' || "${ENV_PYTHON}" -m pip install --force-reinstall --constraint "${PIP_CONSTRAINTS}" torch==2.2.2 torchvision==0.17.2 --index-url https://download.pytorch.org/whl/cu118
+import numpy as np
+import torch
+import torchvision
+
+assert np.__version__.startswith("1."), np.__version__
+assert torch.__version__.startswith("2.2.2"), torch.__version__
+assert "+cu118" in torch.__version__, torch.__version__
+assert torchvision.__version__.startswith("0.17.2"), torchvision.__version__
+PY
+"${ENV_PYTHON}" -m pip install --constraint "${PIP_CONSTRAINTS}" -r "${REQ_NO_TORCH}"
+
+"${ENV_PYTHON}" - <<'PY'
+import sys
+import numpy as np
+import torch
+import torchvision
+from torch import nn
+
+print(f"NumPy: {np.__version__}")
+print(f"PyTorch: {torch.__version__}")
+print(f"Torchvision: {torchvision.__version__}")
+print(f"CUDA_VISIBLE_DEVICES: {__import__('os').environ.get('CUDA_VISIBLE_DEVICES', '<unset>')}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+if not torch.cuda.is_available():
+    sys.exit("ERROR: PyTorch cannot access CUDA; refusing to run slow CPU poison generation.")
+print(f"CUDA device: {torch.cuda.get_device_name(0)}")
+torch.from_numpy(np.zeros((1,), dtype=np.float32))
+try:
+    tensor = torch.zeros((1,), device="cuda")
+    model = nn.Linear(1, 1).to("cuda")
+    model(tensor.reshape(1, 1))
+    torch.cuda.synchronize()
+except RuntimeError as exc:
+    sys.exit(f"ERROR: CUDA allocation test failed before poison generation: {exc}")
+PY
 
 export PYTHONUNBUFFERED=1
 cd "${REPO_DIR}"
