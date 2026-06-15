@@ -14,6 +14,9 @@ REPO_DIR = os.path.dirname(BASE_DIR)
 DATA_ROOT = os.path.join(BASE_DIR, "datasets")
 CONFIG_DIR = os.path.join(BASE_DIR, "configs")
 SLURM_DIR = os.path.join(BASE_DIR, "slurm_jobs")
+BP_ROOT = os.path.join(BASE_DIR, "BullseyePoison")
+BP_DATA_DIR = os.path.join(BP_ROOT, "datasets")
+BP_SPLIT_PATH = os.path.join(BP_DATA_DIR, "CIFAR10_TRAIN_Split.pth")
 
 # Final destination folders where paired datasets will be saved
 TRAIN_CLEAN_DIR = os.path.join(DATA_ROOT, "train", "clean")
@@ -21,9 +24,27 @@ TRAIN_POISON_DIR = os.path.join(DATA_ROOT, "train", "poisons")
 TEST_DIR = os.path.join(DATA_ROOT, "test")
 
 SEED = 121 
+BP_MODE = os.environ.get("BP_MODE", "mean")
+BP_POISON_ITERS = os.environ.get("BP_POISON_ITERS", "1500")
 
 def _all_files_exist(paths):
     return all(os.path.exists(path) for path in paths)
+
+def latest_checkpoint_iteration(checkpoint_dir):
+    if not os.path.isdir(checkpoint_dir):
+        return None
+
+    latest = None
+    for name in os.listdir(checkpoint_dir):
+        if not name.startswith("poison_") or not name.endswith(".pth"):
+            continue
+        try:
+            iteration = int(name[len("poison_"):-len(".pth")])
+        except ValueError:
+            continue
+        if latest is None or iteration > latest:
+            latest = iteration
+    return latest
 
 def clean_train_name(class_idx, image_idx):
     return f"clean_c{class_idx}_{image_idx}.png"
@@ -43,6 +64,41 @@ def wb_eval_dir(class_idx):
 def bp_eval_dir(class_idx, group_idx):
     return os.path.join(TEST_DIR, f"BP_c{class_idx}_g{group_idx}")
 
+def save_bp_dataset_split(train_set, test_set, shuffled_train_indices):
+    """Create the BP split in the class-relative order used by PLAN.md.
+
+    The official BP datasets.zip split only has 200 CIFAR images per class, so it
+    cannot support our [1500..2499] BP train pool. BP only requires that
+    fetch_target/fetch_poison_bases can iterate images by label, so we store a
+    compact full-CIFAR split and teach BullseyePoison/utils.py to read it.
+    """
+    os.makedirs(BP_DATA_DIR, exist_ok=True)
+    ordered_indices = np.concatenate([shuffled_train_indices[c] for c in range(10)])
+    ordered_targets = np.array(train_set.targets, dtype=np.int64)[ordered_indices]
+    split = {
+        'format': 'cm_custom_compact_v1',
+        'clean_train': {
+            'data': train_set.data[ordered_indices],
+            'targets': ordered_targets,
+        },
+        'others': {
+            'data': train_set.data[ordered_indices],
+            'targets': ordered_targets,
+        },
+        'target': {
+            'data': test_set.data,
+            'targets': np.array(test_set.targets, dtype=np.int64),
+        },
+    }
+    with open(BP_SPLIT_PATH, 'wb') as f:
+        pickle.dump(split, f, protocol=pickle.HIGHEST_PROTOCOL)
+    print(f"Saved full BullseyePoison CIFAR split to {BP_SPLIT_PATH}")
+
+    return {
+        c: train_set.data[shuffled_train_indices[c]]
+        for c in range(10)
+    }
+
 def setup_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -56,6 +112,7 @@ def setup_clean_datasets():
     
     os.makedirs(TRAIN_CLEAN_DIR, exist_ok=True)
     os.makedirs(CONFIG_DIR, exist_ok=True)
+    os.makedirs(BP_DATA_DIR, exist_ok=True)
 
     print(f"Downloading/Verifying CIFAR-10 datasets in {DATA_ROOT}...")
     train_set = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=True, download=True)
@@ -64,15 +121,28 @@ def setup_clean_datasets():
     train_labels = np.array(train_set.targets)
     test_labels = np.array(test_set.targets)
 
-    wb_setups = []
-    bp_setups = []
-
+    shuffled_train_indices = {}
     for c in range(10):
         class_indices = np.where(train_labels == c)[0]
         assert len(class_indices) == 5000
-        
-        # Shuffle immediately
         np.random.shuffle(class_indices)
+        shuffled_train_indices[c] = class_indices
+
+    bp_class_data = save_bp_dataset_split(train_set, test_set, shuffled_train_indices)
+
+    wb_setups = []
+    bp_setups = []
+
+    def pull_bp_target(base_class):
+        target_classes = [cls for cls in range(10) if cls != base_class]
+        target_cls = int(np.random.choice(target_classes))
+        target_arg_idx = int(np.random.randint(0, 50))
+        # craft_poisons_transfer.py calls fetch_target(..., start_idx=50).
+        target_img = Image.fromarray(bp_class_data[target_cls][target_arg_idx + 50])
+        return target_arg_idx, target_cls, target_img
+
+    for c in range(10):
+        class_indices = shuffled_train_indices[c]
         
         # Witches’ Brew Bounds
         wb_train1_pool = class_indices[0:500]       
@@ -80,8 +150,8 @@ def setup_clean_datasets():
         wb_eval_pool   = class_indices[1000:1500]   
         
         # Bullseye Polytope Bounds
-        bp_train_pool  = class_indices[1500:2500]   
-        bp_eval_pool   = class_indices[2500:2520]   
+        bp_train_pool  = list(range(1500, 2500))
+        bp_eval_pool   = list(range(2500, 2520))
         
         # Clean Dataset
         clean_cm_pool  = class_indices[2520:3520]   
@@ -133,23 +203,23 @@ def setup_clean_datasets():
         # ------------------------------------------
         # Train (100 distinct groups of 10)
         for g in range(100):
-            t_idx, t_cls, t_img = pull_target()
+            t_idx, t_cls, t_img = pull_bp_target(c)
             sub_indices = bp_train_pool[g*10 : (g+1)*10]
             bp_setups.append({
-                'base indices': sub_indices.tolist(), 'target index': t_idx, 
+                'base indices': list(sub_indices), 'target index': t_idx,
                 'target class': t_cls, 'base class': c, 'desc': 'BP_Train', 
                 'batch_group': g, 'is_train': True, 'start_idx': 1500 + (g*10)
             })
             for b_idx in sub_indices:
-                img, _ = train_set[b_idx]
+                img = Image.fromarray(bp_class_data[c][b_idx])
                 img.save(os.path.join(TRAIN_CLEAN_DIR, bp_name(c, g, b_idx)))
                 
         # Eval (2 distinct groups of 10)
         for g in range(2):
-            t_idx, t_cls, t_img = pull_target()
+            t_idx, t_cls, t_img = pull_bp_target(c)
             sub_indices = bp_eval_pool[g*10 : (g+1)*10]
             bp_setups.append({
-                'base indices': sub_indices.tolist(), 'target index': t_idx, 
+                'base indices': list(sub_indices), 'target index': t_idx,
                 'target class': t_cls, 'base class': c, 'desc': 'BP_Eval', 
                 'batch_group': g, 'is_train': False, 'start_idx': 2500 + (g*10)
             })
@@ -159,7 +229,7 @@ def setup_clean_datasets():
             os.makedirs(t_dest, exist_ok=True)
             t_img.save(os.path.join(t_dest, target_name(t_cls, t_idx)))
             for b_idx in sub_indices:
-                img, _ = train_set[b_idx]
+                img = Image.fromarray(bp_class_data[c][b_idx])
                 img.save(os.path.join(dest, "clean", bp_name(c, g, b_idx)))
 
     with open(os.path.join(CONFIG_DIR, 'wb_benchmark_setups.pickle'), 'wb') as f:
@@ -326,6 +396,8 @@ def craft_bp():
         if os.path.exists(poisons_file):
             print(f"Found existing BP result at {poisons_file}; exporting PNGs.")
         else:
+            checkpoint_dir = os.path.join(export_dir, BP_MODE, BP_POISON_ITERS, str(setup['target index']))
+            resume_ite = latest_checkpoint_iteration(checkpoint_dir)
             cmd = [
                 sys.executable, "craft_poisons_transfer.py",
                 "--target-label", str(setup['target class']),
@@ -336,7 +408,16 @@ def craft_bp():
                 "--substitute-nets", "ResNet18",
                 "--target-net", "ResNet18",
                 "--model-resume-path", "model-chks",
+                "--mode", BP_MODE,
+                "--poison-ites", BP_POISON_ITERS,
             ]
+
+            if resume_ite is not None and resume_ite > 0:
+                print(
+                    f"Found partial BP checkpoint for case {i} at "
+                    f"{os.path.join(checkpoint_dir, f'poison_{resume_ite:05d}.pth')}; resuming."
+                )
+                cmd.extend(["--resume-poison-ite", str(resume_ite)])
 
             subprocess.run(cmd, cwd=bp_root, env=env, check=True)
 

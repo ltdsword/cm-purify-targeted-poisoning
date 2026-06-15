@@ -6,6 +6,7 @@
 #SBATCH --mem=32G              
 #SBATCH --gres=gpu:1           
 #SBATCH --time=48:00:00        
+#SBATCH --exclude=gpu03
 
 set -euo pipefail
 
@@ -85,7 +86,7 @@ export CUDA_DEVICE_ORDER=PCI_BUS_ID
 REQ_NO_TORCH="$(mktemp)"
 PIP_CONSTRAINTS="$(mktemp)"
 trap 'rm -f "${REQ_NO_TORCH}" "${PIP_CONSTRAINTS}"' EXIT
-grep -vE '^[[:space:]]*(torch|torchvision)([<>=!~ ].*)?$' "${REPO_DIR}/requirements.txt" > "${REQ_NO_TORCH}"
+grep -vE '^[[:space:]]*(torch|torchvision|diffusers|transformers|accelerate|huggingface_hub)([<>=!~ ].*)?$' "${REPO_DIR}/requirements.txt" > "${REQ_NO_TORCH}"
 cat > "${PIP_CONSTRAINTS}" <<'EOF'
 numpy<2
 EOF
@@ -138,7 +139,7 @@ echo "=============================="
 "${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode setup_clean
 
 echo "=============================="
-echo "2. GENERATING WTICHES BREW POISONS..."
+echo "2. GENERATING WITCHES BREW POISONS..."
 echo "=============================="
 "${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_wb
 

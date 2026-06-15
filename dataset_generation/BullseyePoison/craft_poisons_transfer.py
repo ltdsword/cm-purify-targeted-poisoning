@@ -194,10 +194,14 @@ if __name__ == '__main__':
             state_dict = torch.load(os.path.join(chk_path, "poison_%05d.pth" % args.resume_poison_ite))
             poison_tuple_list, base_idx_list = state_dict['poison'], state_dict['idx']
             poison_init = [pt.to('cuda') for pt, _ in poison_tuple_list]
-            # re-direct the results to the resumed dir...
-            chk_path += '-resume'
-            if not os.path.exists(chk_path):
-                os.makedirs(chk_path)
+            # Standalone BP runs keep the original behavior and write to a
+            # separate resumed directory. The dataset-generation wrapper uses
+            # BP_EXPORT_DIR and needs stable per-case checkpoint paths for
+            # repeated Slurm restarts.
+            if os.environ.get('BP_EXPORT_DIR') is None:
+                chk_path += '-resume'
+                if not os.path.exists(chk_path):
+                    os.makedirs(chk_path)
         else:
             poison_init = base_tensor_list
 

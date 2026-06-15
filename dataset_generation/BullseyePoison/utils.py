@@ -2,6 +2,24 @@ from dataset_generation.BullseyePoison.models import *
 from PIL import Image, ExifTags
 import os
 import cv2
+import pickle
+
+def load_image_label_subset(path, subset):
+    try:
+        with open(path, 'rb') as f:
+            split_file = pickle.load(f)
+    except Exception:
+        split_file = torch.load(path)
+    split = split_file[subset]
+    if isinstance(split, dict) and 'data' in split and 'targets' in split:
+        return split['data'], split['targets']
+    return split, None
+
+def iter_image_label_subset(path, subset):
+    data, targets = load_image_label_subset(path, subset)
+    if targets is None:
+        return data, len(data)
+    return zip(data, targets), len(targets)
 
 def load_pretrained_net(net_name, chk_name, model_chk_path, test_dp=0, bdp=0, device='cuda'):
     """
@@ -96,9 +114,9 @@ def fetch_target(target_label, target_index, start_idx, path, subset, transforms
     """
     Fetch the "target_index"-th target, counting starts from start_idx
     """
-    img_label_list = torch.load(path)[subset]
+    img_label_iter, img_label_count = iter_image_label_subset(path, subset)
     counter = 0
-    for idx, (img, label) in enumerate(img_label_list):
+    for idx, (img, label) in enumerate(img_label_iter):
         if label == target_label:
             counter += 1
             if counter == (target_index + start_idx + 1):
@@ -107,15 +125,15 @@ def fetch_target(target_label, target_index, start_idx, path, subset, transforms
                 else:
                     return np.array(img)[None, :, :, :]
     raise Exception("Target with index {} exceeds number of total samples (should be less than {})".format(
-        target_index, len(img_label_list) / 10 - start_idx))
+        target_index, img_label_count / 10 - start_idx))
 
 
 def fetch_all_target_cls(target_label, num_per_class_transfer, subset, path, transforms, start_idx=0):
-    img_label_list = torch.load(path)[subset]
+    img_label_iter, _ = iter_image_label_subset(path, subset)
     counter = 0
     targetcls_img_list = []
     idx_list = []
-    for idx, (img, label) in enumerate(img_label_list):
+    for idx, (img, label) in enumerate(img_label_iter):
         if label == target_label:
             if counter >= start_idx:
                 if (counter - start_idx) < num_per_class_transfer:
@@ -155,10 +173,10 @@ def fetch_poison_bases(poison_label, num_poison, subset, path, transforms, start
     """
     Fetch num_poison images as the base class from the poison_label class, skipping start_idx images.
     """
-    img_label_list = torch.load(path)[subset]
+    img_label_iter, _ = iter_image_label_subset(path, subset)
     base_tensor_list, base_idx_list = [], []
     counter = 0
-    for idx, (img, label) in enumerate(img_label_list):
+    for idx, (img, label) in enumerate(img_label_iter):
         if label == poison_label:
             if counter >= start_idx:
                 base_tensor_list.append(transforms(img))
