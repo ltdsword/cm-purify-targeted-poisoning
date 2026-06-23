@@ -1,0 +1,10 @@
+[transformers] Disabling PyTorch because PyTorch >= 2.4 is required but found 2.2.2+cu118
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+[transformers] Disabling PyTorch because PyTorch >= 2.4 is required but found 2.2.2+cu118
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+[transformers] Disabling PyTorch because PyTorch >= 2.4 is required but found 2.2.2+cu118
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+[transformers] Disabling PyTorch because PyTorch >= 2.4 is required but found 2.2.2+cu118
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+[transformers] Disabling PyTorch because PyTorch >= 2.4 is required but found 2.2.2+cu118
+[transformers] PyTorch was not found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
