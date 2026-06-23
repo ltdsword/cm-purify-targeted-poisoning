@@ -26,6 +26,9 @@ TEST_DIR = os.path.join(DATA_ROOT, "test")
 SEED = 121 
 BP_MODE = os.environ.get("BP_MODE", "mean")
 BP_POISON_ITERS = os.environ.get("BP_POISON_ITERS", "1500")
+FORCE_BP_EXPORT = os.environ.get("FORCE_BP_EXPORT", "0") == "1"
+CIFAR_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR_STD = (0.2023, 0.1994, 0.2010)
 
 def _all_files_exist(paths):
     return all(os.path.exists(path) for path in paths)
@@ -63,6 +66,17 @@ def wb_eval_dir(class_idx):
 
 def bp_eval_dir(class_idx, group_idx):
     return os.path.join(TEST_DIR, f"BP_c{class_idx}_g{group_idx}")
+
+def bp_tensor_to_pil_image(tensor):
+    import torch
+
+    if not isinstance(tensor, torch.Tensor):
+        return tensor
+
+    mean = torch.tensor(CIFAR_MEAN, dtype=tensor.dtype, device=tensor.device).view(3, 1, 1)
+    std = torch.tensor(CIFAR_STD, dtype=tensor.dtype, device=tensor.device).view(3, 1, 1)
+    image_tensor = (tensor.detach() * std + mean).clamp(0, 1).cpu()
+    return torchvision.transforms.ToPILImage()(image_tensor)
 
 def save_bp_dataset_split(train_set, test_set, shuffled_train_indices):
     """Create the BP split in the class-relative order used by PLAN.md.
@@ -383,7 +397,7 @@ def craft_bp():
                 for base_idx in setup['base indices']
             ]
 
-        if _all_files_exist(expected_outputs):
+        if _all_files_exist(expected_outputs) and not FORCE_BP_EXPORT:
             print(f"BP {i+1}/{len(bp_setups)} already exported; skipping.")
             continue
         
@@ -427,13 +441,7 @@ def craft_bp():
                 bp_data = pickle.load(pf)
                 
             for p_num, (p_tensor, _) in enumerate(bp_data['poisons']):
-                if isinstance(p_tensor, torch.Tensor):
-                    
-                    # BP uses means/(std+eps). Let's un-normalize if necessary, but generally we can save tensors natively or denorm
-                    # If BP exported already denormalized tensors, we can safely ToPILImage... Let's just do a direct save
-                    p_img = torchvision.transforms.ToPILImage()(p_tensor.cpu().clamp(0, 1))
-                else: 
-                    p_img = p_tensor
+                p_img = bp_tensor_to_pil_image(p_tensor)
                     
                 base_idx = setup['base indices'][p_num] 
                 if setup['is_train']:

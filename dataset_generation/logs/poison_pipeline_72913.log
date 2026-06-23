@@ -1,0 +1,2224 @@
+Job ID: 72913
+Running on: gpu02
+Working directory: /media02/ndthuc03/cm-purify-targeted-poisoning
+Repository: /media02/ndthuc03/cm-purify-targeted-poisoning
+Logs directory: /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/logs
+Main log: /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/logs/poison_pipeline_72913.log
+Error log: /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/logs/poison_pipeline_err_72913.log
+Started at: 2026-06-23T03:34:56+07:00
+SLURM job GPUs: 3
+SLURM step GPUs: <unset>
+CUDA_VISIBLE_DEVICES before setup: 0
+Tue Jun 23 03:34:56 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 555.42.02              Driver Version: 555.42.02      CUDA Version: 12.5     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA A100-PCIE-40GB          Off |   00000000:64:00.0 Off |                    0 |
+| N/A   30C    P0             32W /  250W |       4MiB /  40960MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Requirement already satisfied: pip in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (26.1.2)
+Requirement already satisfied: numpy in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 2)) (1.26.4)
+Requirement already satisfied: tqdm in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 5)) (4.68.2)
+Requirement already satisfied: Pillow in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 10)) (12.2.0)
+Requirement already satisfied: lmdb in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 16)) (2.2.1)
+Requirement already satisfied: efficientnet_pytorch in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 18)) (0.7.1)
+Requirement already satisfied: pandas in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 19)) (2.3.3)
+Requirement already satisfied: scipy in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 20)) (1.15.3)
+Requirement already satisfied: opencv-python in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 21)) (4.11.0.86)
+Requirement already satisfied: matplotlib in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 22)) (3.10.9)
+Requirement already satisfied: google-cloud-storage in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 23)) (3.11.0)
+Requirement already satisfied: google-cloud-automl in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 24)) (2.20.0)
+Requirement already satisfied: gdown in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.gFd45LIe2N (line 25)) (6.1.0)
+Requirement already satisfied: torch in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (2.2.2+cu118)
+Requirement already satisfied: python-dateutil>=2.8.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pandas->-r /tmp/tmp.gFd45LIe2N (line 19)) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pandas->-r /tmp/tmp.gFd45LIe2N (line 19)) (2026.2)
+Requirement already satisfied: tzdata>=2022.7 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pandas->-r /tmp/tmp.gFd45LIe2N (line 19)) (2026.2)
+Requirement already satisfied: contourpy>=1.0.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.gFd45LIe2N (line 22)) (1.3.2)
+Requirement already satisfied: cycler>=0.10 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.gFd45LIe2N (line 22)) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.gFd45LIe2N (line 22)) (4.63.0)
+Requirement already satisfied: kiwisolver>=1.3.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.gFd45LIe2N (line 22)) (1.5.0)
+Requirement already satisfied: packaging>=20.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.gFd45LIe2N (line 22)) (26.0)
+Requirement already satisfied: pyparsing>=3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.gFd45LIe2N (line 22)) (3.3.2)
+Requirement already satisfied: google-auth<3.0.0,>=2.26.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.53.0)
+Requirement already satisfied: google-api-core<3.0.0,>=2.27.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.31.0)
+Requirement already satisfied: google-cloud-core<3.0.0,>=2.4.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.6.0)
+Requirement already satisfied: google-resumable-media<3.0.0,>=2.7.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.10.0)
+Requirement already satisfied: requests<3.0.0,>=2.22.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.34.2)
+Requirement already satisfied: google-crc32c<2.0.0,>=1.6.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (1.8.0)
+Requirement already satisfied: googleapis-common-protos<2.0.0,>=1.63.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core<3.0.0,>=2.27.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (1.75.0)
+Requirement already satisfied: protobuf<8.0.0,>=5.29.6 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core<3.0.0,>=2.27.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (7.35.0)
+Requirement already satisfied: proto-plus<2.0.0,>=1.24.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core<3.0.0,>=2.27.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (1.28.0)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (0.4.2)
+Requirement already satisfied: cryptography>=38.0.3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (48.0.0)
+Requirement already satisfied: charset_normalizer<4,>=2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests<3.0.0,>=2.22.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (3.4.7)
+Requirement already satisfied: idna<4,>=2.5 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests<3.0.0,>=2.22.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (3.18)
+Requirement already satisfied: urllib3<3,>=1.26 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests<3.0.0,>=2.22.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.7.0)
+Requirement already satisfied: certifi>=2023.5.7 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests<3.0.0,>=2.22.0->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2026.5.20)
+Requirement already satisfied: grpcio<2.0.0,>=1.59.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-automl->-r /tmp/tmp.gFd45LIe2N (line 24)) (1.81.0)
+Requirement already satisfied: grpcio-status<2.0.0,>=1.41.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core[grpc]<3.0.0,>=2.17.1->google-cloud-automl->-r /tmp/tmp.gFd45LIe2N (line 24)) (1.81.0)
+Requirement already satisfied: typing-extensions~=4.12 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from grpcio<2.0.0,>=1.59.0->google-cloud-automl->-r /tmp/tmp.gFd45LIe2N (line 24)) (4.15.0)
+Requirement already satisfied: beautifulsoup4 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from gdown->-r /tmp/tmp.gFd45LIe2N (line 25)) (4.14.3)
+Requirement already satisfied: filelock in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from gdown->-r /tmp/tmp.gFd45LIe2N (line 25)) (3.29.0)
+Requirement already satisfied: cffi>=2.0.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from cryptography>=38.0.3->google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (2.0.0)
+Requirement already satisfied: pycparser in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from cffi>=2.0.0->cryptography>=38.0.3->google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (3.0)
+Requirement already satisfied: pyasn1<0.7.0,>=0.6.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pyasn1-modules>=0.2.1->google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.gFd45LIe2N (line 23)) (0.6.3)
+Requirement already satisfied: six>=1.5 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from python-dateutil>=2.8.2->pandas->-r /tmp/tmp.gFd45LIe2N (line 19)) (1.17.0)
+Requirement already satisfied: soupsieve>=1.6.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from beautifulsoup4->gdown->-r /tmp/tmp.gFd45LIe2N (line 25)) (2.8.4)
+Requirement already satisfied: PySocks!=1.5.7,>=1.5.6 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests[socks]->gdown->-r /tmp/tmp.gFd45LIe2N (line 25)) (1.7.1)
+Requirement already satisfied: sympy in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (1.14.0)
+Requirement already satisfied: networkx in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (3.4.2)
+Requirement already satisfied: jinja2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (3.1.6)
+Requirement already satisfied: fsspec in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (2026.4.0)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu11==11.8.89 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.8.89)
+Requirement already satisfied: nvidia-cuda-runtime-cu11==11.8.89 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.8.89)
+Requirement already satisfied: nvidia-cuda-cupti-cu11==11.8.87 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.8.87)
+Requirement already satisfied: nvidia-cudnn-cu11==8.7.0.84 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (8.7.0.84)
+Requirement already satisfied: nvidia-cublas-cu11==11.11.3.6 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.11.3.6)
+Requirement already satisfied: nvidia-cufft-cu11==10.9.0.58 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (10.9.0.58)
+Requirement already satisfied: nvidia-curand-cu11==10.3.0.86 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (10.3.0.86)
+Requirement already satisfied: nvidia-cusolver-cu11==11.4.1.48 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.4.1.48)
+Requirement already satisfied: nvidia-cusparse-cu11==11.7.5.86 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.7.5.86)
+Requirement already satisfied: nvidia-nccl-cu11==2.19.3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (2.19.3)
+Requirement already satisfied: nvidia-nvtx-cu11==11.8.86 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (11.8.86)
+Requirement already satisfied: triton==2.2.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (2.2.0)
+Requirement already satisfied: MarkupSafe>=2.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from jinja2->torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (3.0.3)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from sympy->torch->efficientnet_pytorch->-r /tmp/tmp.gFd45LIe2N (line 18)) (1.3.0)
+NumPy: 1.26.4
+PyTorch: 2.2.2+cu118
+Torchvision: 0.17.2+cu118
+CUDA_VISIBLE_DEVICES: 0
+CUDA available: True
+CUDA device: NVIDIA A100-PCIE-40GB
+==============================
+1. PREPARING CLEAN DATASETS...
+==============================
+Downloading/Verifying CIFAR-10 datasets in /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/datasets...
+Files already downloaded and verified
+Files already downloaded and verified
+Saved full BullseyePoison CIFAR split to /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/BullseyePoison/datasets/CIFAR10_TRAIN_Split.pth
+Clean images explicitly verified and saved!
+==============================
+2. GENERATING WITCHES BREW POISONS...
+==============================
+Total WB setups: 30
+Crafting WB 1/30 - Class 0 train1
+WB 1/30 already exported; skipping.
+Crafting WB 2/30 - Class 0 train2
+WB 2/30 already exported; skipping.
+Crafting WB 3/30 - Class 0 eval
+WB 3/30 already exported; skipping.
+Crafting WB 4/30 - Class 1 train1
+WB 4/30 already exported; skipping.
+Crafting WB 5/30 - Class 1 train2
+WB 5/30 already exported; skipping.
+Crafting WB 6/30 - Class 1 eval
+WB 6/30 already exported; skipping.
+Crafting WB 7/30 - Class 2 train1
+WB 7/30 already exported; skipping.
+Crafting WB 8/30 - Class 2 train2
+WB 8/30 already exported; skipping.
+Crafting WB 9/30 - Class 2 eval
+WB 9/30 already exported; skipping.
+Crafting WB 10/30 - Class 3 train1
+WB 10/30 already exported; skipping.
+Crafting WB 11/30 - Class 3 train2
+WB 11/30 already exported; skipping.
+Crafting WB 12/30 - Class 3 eval
+WB 12/30 already exported; skipping.
+Crafting WB 13/30 - Class 4 train1
+WB 13/30 already exported; skipping.
+Crafting WB 14/30 - Class 4 train2
+WB 14/30 already exported; skipping.
+Crafting WB 15/30 - Class 4 eval
+WB 15/30 already exported; skipping.
+Crafting WB 16/30 - Class 5 train1
+WB 16/30 already exported; skipping.
+Crafting WB 17/30 - Class 5 train2
+WB 17/30 already exported; skipping.
+Crafting WB 18/30 - Class 5 eval
+WB 18/30 already exported; skipping.
+Crafting WB 19/30 - Class 6 train1
+WB 19/30 already exported; skipping.
+Crafting WB 20/30 - Class 6 train2
+WB 20/30 already exported; skipping.
+Crafting WB 21/30 - Class 6 eval
+WB 21/30 already exported; skipping.
+Crafting WB 22/30 - Class 7 train1
+WB 22/30 already exported; skipping.
+Crafting WB 23/30 - Class 7 train2
+WB 23/30 already exported; skipping.
+Crafting WB 24/30 - Class 7 eval
+WB 24/30 already exported; skipping.
+Crafting WB 25/30 - Class 8 train1
+WB 25/30 already exported; skipping.
+Crafting WB 26/30 - Class 8 train2
+WB 26/30 already exported; skipping.
+Crafting WB 27/30 - Class 8 eval
+WB 27/30 already exported; skipping.
+Crafting WB 28/30 - Class 9 train1
+WB 28/30 already exported; skipping.
+Crafting WB 29/30 - Class 9 train2
+WB 29/30 already exported; skipping.
+Crafting WB 30/30 - Class 9 eval
+WB 30/30 already exported; skipping.
+==============================
+3. GENERATING BULLSEYE POLYTOPE POISONS...
+==============================
+Total BP setups: 1020
+Crafting BP 1/1020 - Class 0 Group 0
+BP 1/1020 already exported; skipping.
+Crafting BP 2/1020 - Class 0 Group 1
+BP 2/1020 already exported; skipping.
+Crafting BP 3/1020 - Class 0 Group 2
+BP 3/1020 already exported; skipping.
+Crafting BP 4/1020 - Class 0 Group 3
+BP 4/1020 already exported; skipping.
+Crafting BP 5/1020 - Class 0 Group 4
+BP 5/1020 already exported; skipping.
+Crafting BP 6/1020 - Class 0 Group 5
+BP 6/1020 already exported; skipping.
+Crafting BP 7/1020 - Class 0 Group 6
+BP 7/1020 already exported; skipping.
+Crafting BP 8/1020 - Class 0 Group 7
+BP 8/1020 already exported; skipping.
+Crafting BP 9/1020 - Class 0 Group 8
+BP 9/1020 already exported; skipping.
+Crafting BP 10/1020 - Class 0 Group 9
+BP 10/1020 already exported; skipping.
+Crafting BP 11/1020 - Class 0 Group 10
+BP 11/1020 already exported; skipping.
+Crafting BP 12/1020 - Class 0 Group 11
+BP 12/1020 already exported; skipping.
+Crafting BP 13/1020 - Class 0 Group 12
+BP 13/1020 already exported; skipping.
+Crafting BP 14/1020 - Class 0 Group 13
+BP 14/1020 already exported; skipping.
+Crafting BP 15/1020 - Class 0 Group 14
+BP 15/1020 already exported; skipping.
+Crafting BP 16/1020 - Class 0 Group 15
+BP 16/1020 already exported; skipping.
+Crafting BP 17/1020 - Class 0 Group 16
+BP 17/1020 already exported; skipping.
+Crafting BP 18/1020 - Class 0 Group 17
+BP 18/1020 already exported; skipping.
+Crafting BP 19/1020 - Class 0 Group 18
+BP 19/1020 already exported; skipping.
+Crafting BP 20/1020 - Class 0 Group 19
+BP 20/1020 already exported; skipping.
+Crafting BP 21/1020 - Class 0 Group 20
+BP 21/1020 already exported; skipping.
+Crafting BP 22/1020 - Class 0 Group 21
+BP 22/1020 already exported; skipping.
+Crafting BP 23/1020 - Class 0 Group 22
+BP 23/1020 already exported; skipping.
+Crafting BP 24/1020 - Class 0 Group 23
+BP 24/1020 already exported; skipping.
+Crafting BP 25/1020 - Class 0 Group 24
+BP 25/1020 already exported; skipping.
+Crafting BP 26/1020 - Class 0 Group 25
+BP 26/1020 already exported; skipping.
+Crafting BP 27/1020 - Class 0 Group 26
+BP 27/1020 already exported; skipping.
+Crafting BP 28/1020 - Class 0 Group 27
+BP 28/1020 already exported; skipping.
+Crafting BP 29/1020 - Class 0 Group 28
+BP 29/1020 already exported; skipping.
+Crafting BP 30/1020 - Class 0 Group 29
+BP 30/1020 already exported; skipping.
+Crafting BP 31/1020 - Class 0 Group 30
+BP 31/1020 already exported; skipping.
+Crafting BP 32/1020 - Class 0 Group 31
+BP 32/1020 already exported; skipping.
+Crafting BP 33/1020 - Class 0 Group 32
+BP 33/1020 already exported; skipping.
+Crafting BP 34/1020 - Class 0 Group 33
+BP 34/1020 already exported; skipping.
+Crafting BP 35/1020 - Class 0 Group 34
+BP 35/1020 already exported; skipping.
+Crafting BP 36/1020 - Class 0 Group 35
+BP 36/1020 already exported; skipping.
+Crafting BP 37/1020 - Class 0 Group 36
+BP 37/1020 already exported; skipping.
+Crafting BP 38/1020 - Class 0 Group 37
+BP 38/1020 already exported; skipping.
+Crafting BP 39/1020 - Class 0 Group 38
+BP 39/1020 already exported; skipping.
+Crafting BP 40/1020 - Class 0 Group 39
+BP 40/1020 already exported; skipping.
+Crafting BP 41/1020 - Class 0 Group 40
+BP 41/1020 already exported; skipping.
+Crafting BP 42/1020 - Class 0 Group 41
+BP 42/1020 already exported; skipping.
+Crafting BP 43/1020 - Class 0 Group 42
+BP 43/1020 already exported; skipping.
+Crafting BP 44/1020 - Class 0 Group 43
+BP 44/1020 already exported; skipping.
+Crafting BP 45/1020 - Class 0 Group 44
+BP 45/1020 already exported; skipping.
+Crafting BP 46/1020 - Class 0 Group 45
+BP 46/1020 already exported; skipping.
+Crafting BP 47/1020 - Class 0 Group 46
+BP 47/1020 already exported; skipping.
+Crafting BP 48/1020 - Class 0 Group 47
+BP 48/1020 already exported; skipping.
+Crafting BP 49/1020 - Class 0 Group 48
+BP 49/1020 already exported; skipping.
+Crafting BP 50/1020 - Class 0 Group 49
+BP 50/1020 already exported; skipping.
+Crafting BP 51/1020 - Class 0 Group 50
+BP 51/1020 already exported; skipping.
+Crafting BP 52/1020 - Class 0 Group 51
+BP 52/1020 already exported; skipping.
+Crafting BP 53/1020 - Class 0 Group 52
+BP 53/1020 already exported; skipping.
+Crafting BP 54/1020 - Class 0 Group 53
+BP 54/1020 already exported; skipping.
+Crafting BP 55/1020 - Class 0 Group 54
+BP 55/1020 already exported; skipping.
+Crafting BP 56/1020 - Class 0 Group 55
+BP 56/1020 already exported; skipping.
+Crafting BP 57/1020 - Class 0 Group 56
+BP 57/1020 already exported; skipping.
+Crafting BP 58/1020 - Class 0 Group 57
+BP 58/1020 already exported; skipping.
+Crafting BP 59/1020 - Class 0 Group 58
+BP 59/1020 already exported; skipping.
+Crafting BP 60/1020 - Class 0 Group 59
+BP 60/1020 already exported; skipping.
+Crafting BP 61/1020 - Class 0 Group 60
+BP 61/1020 already exported; skipping.
+Crafting BP 62/1020 - Class 0 Group 61
+BP 62/1020 already exported; skipping.
+Crafting BP 63/1020 - Class 0 Group 62
+BP 63/1020 already exported; skipping.
+Crafting BP 64/1020 - Class 0 Group 63
+BP 64/1020 already exported; skipping.
+Crafting BP 65/1020 - Class 0 Group 64
+BP 65/1020 already exported; skipping.
+Crafting BP 66/1020 - Class 0 Group 65
+BP 66/1020 already exported; skipping.
+Crafting BP 67/1020 - Class 0 Group 66
+BP 67/1020 already exported; skipping.
+Crafting BP 68/1020 - Class 0 Group 67
+BP 68/1020 already exported; skipping.
+Crafting BP 69/1020 - Class 0 Group 68
+BP 69/1020 already exported; skipping.
+Crafting BP 70/1020 - Class 0 Group 69
+BP 70/1020 already exported; skipping.
+Crafting BP 71/1020 - Class 0 Group 70
+BP 71/1020 already exported; skipping.
+Crafting BP 72/1020 - Class 0 Group 71
+BP 72/1020 already exported; skipping.
+Crafting BP 73/1020 - Class 0 Group 72
+BP 73/1020 already exported; skipping.
+Crafting BP 74/1020 - Class 0 Group 73
+BP 74/1020 already exported; skipping.
+Crafting BP 75/1020 - Class 0 Group 74
+BP 75/1020 already exported; skipping.
+Crafting BP 76/1020 - Class 0 Group 75
+BP 76/1020 already exported; skipping.
+Crafting BP 77/1020 - Class 0 Group 76
+BP 77/1020 already exported; skipping.
+Crafting BP 78/1020 - Class 0 Group 77
+BP 78/1020 already exported; skipping.
+Crafting BP 79/1020 - Class 0 Group 78
+BP 79/1020 already exported; skipping.
+Crafting BP 80/1020 - Class 0 Group 79
+BP 80/1020 already exported; skipping.
+Crafting BP 81/1020 - Class 0 Group 80
+BP 81/1020 already exported; skipping.
+Crafting BP 82/1020 - Class 0 Group 81
+BP 82/1020 already exported; skipping.
+Crafting BP 83/1020 - Class 0 Group 82
+BP 83/1020 already exported; skipping.
+Crafting BP 84/1020 - Class 0 Group 83
+BP 84/1020 already exported; skipping.
+Crafting BP 85/1020 - Class 0 Group 84
+BP 85/1020 already exported; skipping.
+Crafting BP 86/1020 - Class 0 Group 85
+BP 86/1020 already exported; skipping.
+Crafting BP 87/1020 - Class 0 Group 86
+BP 87/1020 already exported; skipping.
+Crafting BP 88/1020 - Class 0 Group 87
+BP 88/1020 already exported; skipping.
+Crafting BP 89/1020 - Class 0 Group 88
+BP 89/1020 already exported; skipping.
+Crafting BP 90/1020 - Class 0 Group 89
+BP 90/1020 already exported; skipping.
+Crafting BP 91/1020 - Class 0 Group 90
+BP 91/1020 already exported; skipping.
+Crafting BP 92/1020 - Class 0 Group 91
+BP 92/1020 already exported; skipping.
+Crafting BP 93/1020 - Class 0 Group 92
+BP 93/1020 already exported; skipping.
+Crafting BP 94/1020 - Class 0 Group 93
+BP 94/1020 already exported; skipping.
+Crafting BP 95/1020 - Class 0 Group 94
+BP 95/1020 already exported; skipping.
+Crafting BP 96/1020 - Class 0 Group 95
+BP 96/1020 already exported; skipping.
+Crafting BP 97/1020 - Class 0 Group 96
+BP 97/1020 already exported; skipping.
+Crafting BP 98/1020 - Class 0 Group 97
+BP 98/1020 already exported; skipping.
+Crafting BP 99/1020 - Class 0 Group 98
+BP 99/1020 already exported; skipping.
+Crafting BP 100/1020 - Class 0 Group 99
+BP 100/1020 already exported; skipping.
+Crafting BP 101/1020 - Class 0 Group 0
+BP 101/1020 already exported; skipping.
+Crafting BP 102/1020 - Class 0 Group 1
+BP 102/1020 already exported; skipping.
+Crafting BP 103/1020 - Class 1 Group 0
+BP 103/1020 already exported; skipping.
+Crafting BP 104/1020 - Class 1 Group 1
+BP 104/1020 already exported; skipping.
+Crafting BP 105/1020 - Class 1 Group 2
+BP 105/1020 already exported; skipping.
+Crafting BP 106/1020 - Class 1 Group 3
+BP 106/1020 already exported; skipping.
+Crafting BP 107/1020 - Class 1 Group 4
+BP 107/1020 already exported; skipping.
+Crafting BP 108/1020 - Class 1 Group 5
+BP 108/1020 already exported; skipping.
+Crafting BP 109/1020 - Class 1 Group 6
+BP 109/1020 already exported; skipping.
+Crafting BP 110/1020 - Class 1 Group 7
+BP 110/1020 already exported; skipping.
+Crafting BP 111/1020 - Class 1 Group 8
+BP 111/1020 already exported; skipping.
+Crafting BP 112/1020 - Class 1 Group 9
+BP 112/1020 already exported; skipping.
+Crafting BP 113/1020 - Class 1 Group 10
+BP 113/1020 already exported; skipping.
+Crafting BP 114/1020 - Class 1 Group 11
+BP 114/1020 already exported; skipping.
+Crafting BP 115/1020 - Class 1 Group 12
+BP 115/1020 already exported; skipping.
+Crafting BP 116/1020 - Class 1 Group 13
+BP 116/1020 already exported; skipping.
+Crafting BP 117/1020 - Class 1 Group 14
+BP 117/1020 already exported; skipping.
+Crafting BP 118/1020 - Class 1 Group 15
+BP 118/1020 already exported; skipping.
+Crafting BP 119/1020 - Class 1 Group 16
+BP 119/1020 already exported; skipping.
+Crafting BP 120/1020 - Class 1 Group 17
+BP 120/1020 already exported; skipping.
+Crafting BP 121/1020 - Class 1 Group 18
+BP 121/1020 already exported; skipping.
+Crafting BP 122/1020 - Class 1 Group 19
+BP 122/1020 already exported; skipping.
+Crafting BP 123/1020 - Class 1 Group 20
+BP 123/1020 already exported; skipping.
+Crafting BP 124/1020 - Class 1 Group 21
+BP 124/1020 already exported; skipping.
+Crafting BP 125/1020 - Class 1 Group 22
+BP 125/1020 already exported; skipping.
+Crafting BP 126/1020 - Class 1 Group 23
+BP 126/1020 already exported; skipping.
+Crafting BP 127/1020 - Class 1 Group 24
+BP 127/1020 already exported; skipping.
+Crafting BP 128/1020 - Class 1 Group 25
+BP 128/1020 already exported; skipping.
+Crafting BP 129/1020 - Class 1 Group 26
+BP 129/1020 already exported; skipping.
+Crafting BP 130/1020 - Class 1 Group 27
+BP 130/1020 already exported; skipping.
+Crafting BP 131/1020 - Class 1 Group 28
+BP 131/1020 already exported; skipping.
+Crafting BP 132/1020 - Class 1 Group 29
+BP 132/1020 already exported; skipping.
+Crafting BP 133/1020 - Class 1 Group 30
+BP 133/1020 already exported; skipping.
+Crafting BP 134/1020 - Class 1 Group 31
+BP 134/1020 already exported; skipping.
+Crafting BP 135/1020 - Class 1 Group 32
+BP 135/1020 already exported; skipping.
+Crafting BP 136/1020 - Class 1 Group 33
+BP 136/1020 already exported; skipping.
+Crafting BP 137/1020 - Class 1 Group 34
+BP 137/1020 already exported; skipping.
+Crafting BP 138/1020 - Class 1 Group 35
+BP 138/1020 already exported; skipping.
+Crafting BP 139/1020 - Class 1 Group 36
+BP 139/1020 already exported; skipping.
+Crafting BP 140/1020 - Class 1 Group 37
+BP 140/1020 already exported; skipping.
+Crafting BP 141/1020 - Class 1 Group 38
+BP 141/1020 already exported; skipping.
+Crafting BP 142/1020 - Class 1 Group 39
+BP 142/1020 already exported; skipping.
+Crafting BP 143/1020 - Class 1 Group 40
+BP 143/1020 already exported; skipping.
+Crafting BP 144/1020 - Class 1 Group 41
+BP 144/1020 already exported; skipping.
+Crafting BP 145/1020 - Class 1 Group 42
+BP 145/1020 already exported; skipping.
+Crafting BP 146/1020 - Class 1 Group 43
+BP 146/1020 already exported; skipping.
+Crafting BP 147/1020 - Class 1 Group 44
+BP 147/1020 already exported; skipping.
+Crafting BP 148/1020 - Class 1 Group 45
+BP 148/1020 already exported; skipping.
+Crafting BP 149/1020 - Class 1 Group 46
+BP 149/1020 already exported; skipping.
+Crafting BP 150/1020 - Class 1 Group 47
+BP 150/1020 already exported; skipping.
+Crafting BP 151/1020 - Class 1 Group 48
+BP 151/1020 already exported; skipping.
+Crafting BP 152/1020 - Class 1 Group 49
+BP 152/1020 already exported; skipping.
+Crafting BP 153/1020 - Class 1 Group 50
+BP 153/1020 already exported; skipping.
+Crafting BP 154/1020 - Class 1 Group 51
+BP 154/1020 already exported; skipping.
+Crafting BP 155/1020 - Class 1 Group 52
+BP 155/1020 already exported; skipping.
+Crafting BP 156/1020 - Class 1 Group 53
+BP 156/1020 already exported; skipping.
+Crafting BP 157/1020 - Class 1 Group 54
+BP 157/1020 already exported; skipping.
+Crafting BP 158/1020 - Class 1 Group 55
+BP 158/1020 already exported; skipping.
+Crafting BP 159/1020 - Class 1 Group 56
+BP 159/1020 already exported; skipping.
+Crafting BP 160/1020 - Class 1 Group 57
+BP 160/1020 already exported; skipping.
+Crafting BP 161/1020 - Class 1 Group 58
+BP 161/1020 already exported; skipping.
+Crafting BP 162/1020 - Class 1 Group 59
+BP 162/1020 already exported; skipping.
+Crafting BP 163/1020 - Class 1 Group 60
+BP 163/1020 already exported; skipping.
+Crafting BP 164/1020 - Class 1 Group 61
+BP 164/1020 already exported; skipping.
+Crafting BP 165/1020 - Class 1 Group 62
+BP 165/1020 already exported; skipping.
+Crafting BP 166/1020 - Class 1 Group 63
+BP 166/1020 already exported; skipping.
+Crafting BP 167/1020 - Class 1 Group 64
+BP 167/1020 already exported; skipping.
+Crafting BP 168/1020 - Class 1 Group 65
+BP 168/1020 already exported; skipping.
+Crafting BP 169/1020 - Class 1 Group 66
+BP 169/1020 already exported; skipping.
+Crafting BP 170/1020 - Class 1 Group 67
+BP 170/1020 already exported; skipping.
+Crafting BP 171/1020 - Class 1 Group 68
+BP 171/1020 already exported; skipping.
+Crafting BP 172/1020 - Class 1 Group 69
+BP 172/1020 already exported; skipping.
+Crafting BP 173/1020 - Class 1 Group 70
+BP 173/1020 already exported; skipping.
+Crafting BP 174/1020 - Class 1 Group 71
+BP 174/1020 already exported; skipping.
+Crafting BP 175/1020 - Class 1 Group 72
+BP 175/1020 already exported; skipping.
+Crafting BP 176/1020 - Class 1 Group 73
+BP 176/1020 already exported; skipping.
+Crafting BP 177/1020 - Class 1 Group 74
+BP 177/1020 already exported; skipping.
+Crafting BP 178/1020 - Class 1 Group 75
+BP 178/1020 already exported; skipping.
+Crafting BP 179/1020 - Class 1 Group 76
+BP 179/1020 already exported; skipping.
+Crafting BP 180/1020 - Class 1 Group 77
+BP 180/1020 already exported; skipping.
+Crafting BP 181/1020 - Class 1 Group 78
+BP 181/1020 already exported; skipping.
+Crafting BP 182/1020 - Class 1 Group 79
+BP 182/1020 already exported; skipping.
+Crafting BP 183/1020 - Class 1 Group 80
+BP 183/1020 already exported; skipping.
+Crafting BP 184/1020 - Class 1 Group 81
+BP 184/1020 already exported; skipping.
+Crafting BP 185/1020 - Class 1 Group 82
+BP 185/1020 already exported; skipping.
+Crafting BP 186/1020 - Class 1 Group 83
+BP 186/1020 already exported; skipping.
+Crafting BP 187/1020 - Class 1 Group 84
+BP 187/1020 already exported; skipping.
+Crafting BP 188/1020 - Class 1 Group 85
+BP 188/1020 already exported; skipping.
+Crafting BP 189/1020 - Class 1 Group 86
+BP 189/1020 already exported; skipping.
+Crafting BP 190/1020 - Class 1 Group 87
+BP 190/1020 already exported; skipping.
+Crafting BP 191/1020 - Class 1 Group 88
+BP 191/1020 already exported; skipping.
+Crafting BP 192/1020 - Class 1 Group 89
+BP 192/1020 already exported; skipping.
+Crafting BP 193/1020 - Class 1 Group 90
+BP 193/1020 already exported; skipping.
+Crafting BP 194/1020 - Class 1 Group 91
+BP 194/1020 already exported; skipping.
+Crafting BP 195/1020 - Class 1 Group 92
+BP 195/1020 already exported; skipping.
+Crafting BP 196/1020 - Class 1 Group 93
+BP 196/1020 already exported; skipping.
+Crafting BP 197/1020 - Class 1 Group 94
+BP 197/1020 already exported; skipping.
+Crafting BP 198/1020 - Class 1 Group 95
+BP 198/1020 already exported; skipping.
+Crafting BP 199/1020 - Class 1 Group 96
+BP 199/1020 already exported; skipping.
+Crafting BP 200/1020 - Class 1 Group 97
+BP 200/1020 already exported; skipping.
+Crafting BP 201/1020 - Class 1 Group 98
+BP 201/1020 already exported; skipping.
+Crafting BP 202/1020 - Class 1 Group 99
+BP 202/1020 already exported; skipping.
+Crafting BP 203/1020 - Class 1 Group 0
+BP 203/1020 already exported; skipping.
+Crafting BP 204/1020 - Class 1 Group 1
+BP 204/1020 already exported; skipping.
+Crafting BP 205/1020 - Class 2 Group 0
+BP 205/1020 already exported; skipping.
+Crafting BP 206/1020 - Class 2 Group 1
+BP 206/1020 already exported; skipping.
+Crafting BP 207/1020 - Class 2 Group 2
+BP 207/1020 already exported; skipping.
+Crafting BP 208/1020 - Class 2 Group 3
+BP 208/1020 already exported; skipping.
+Crafting BP 209/1020 - Class 2 Group 4
+BP 209/1020 already exported; skipping.
+Crafting BP 210/1020 - Class 2 Group 5
+BP 210/1020 already exported; skipping.
+Crafting BP 211/1020 - Class 2 Group 6
+BP 211/1020 already exported; skipping.
+Crafting BP 212/1020 - Class 2 Group 7
+BP 212/1020 already exported; skipping.
+Crafting BP 213/1020 - Class 2 Group 8
+BP 213/1020 already exported; skipping.
+Crafting BP 214/1020 - Class 2 Group 9
+BP 214/1020 already exported; skipping.
+Crafting BP 215/1020 - Class 2 Group 10
+BP 215/1020 already exported; skipping.
+Crafting BP 216/1020 - Class 2 Group 11
+BP 216/1020 already exported; skipping.
+Crafting BP 217/1020 - Class 2 Group 12
+BP 217/1020 already exported; skipping.
+Crafting BP 218/1020 - Class 2 Group 13
+BP 218/1020 already exported; skipping.
+Crafting BP 219/1020 - Class 2 Group 14
+BP 219/1020 already exported; skipping.
+Crafting BP 220/1020 - Class 2 Group 15
+BP 220/1020 already exported; skipping.
+Crafting BP 221/1020 - Class 2 Group 16
+BP 221/1020 already exported; skipping.
+Crafting BP 222/1020 - Class 2 Group 17
+BP 222/1020 already exported; skipping.
+Crafting BP 223/1020 - Class 2 Group 18
+BP 223/1020 already exported; skipping.
+Crafting BP 224/1020 - Class 2 Group 19
+BP 224/1020 already exported; skipping.
+Crafting BP 225/1020 - Class 2 Group 20
+BP 225/1020 already exported; skipping.
+Crafting BP 226/1020 - Class 2 Group 21
+BP 226/1020 already exported; skipping.
+Crafting BP 227/1020 - Class 2 Group 22
+BP 227/1020 already exported; skipping.
+Crafting BP 228/1020 - Class 2 Group 23
+BP 228/1020 already exported; skipping.
+Crafting BP 229/1020 - Class 2 Group 24
+BP 229/1020 already exported; skipping.
+Crafting BP 230/1020 - Class 2 Group 25
+BP 230/1020 already exported; skipping.
+Crafting BP 231/1020 - Class 2 Group 26
+BP 231/1020 already exported; skipping.
+Crafting BP 232/1020 - Class 2 Group 27
+BP 232/1020 already exported; skipping.
+Crafting BP 233/1020 - Class 2 Group 28
+BP 233/1020 already exported; skipping.
+Crafting BP 234/1020 - Class 2 Group 29
+BP 234/1020 already exported; skipping.
+Crafting BP 235/1020 - Class 2 Group 30
+BP 235/1020 already exported; skipping.
+Crafting BP 236/1020 - Class 2 Group 31
+BP 236/1020 already exported; skipping.
+Crafting BP 237/1020 - Class 2 Group 32
+BP 237/1020 already exported; skipping.
+Crafting BP 238/1020 - Class 2 Group 33
+BP 238/1020 already exported; skipping.
+Crafting BP 239/1020 - Class 2 Group 34
+BP 239/1020 already exported; skipping.
+Crafting BP 240/1020 - Class 2 Group 35
+BP 240/1020 already exported; skipping.
+Crafting BP 241/1020 - Class 2 Group 36
+BP 241/1020 already exported; skipping.
+Crafting BP 242/1020 - Class 2 Group 37
+BP 242/1020 already exported; skipping.
+Crafting BP 243/1020 - Class 2 Group 38
+BP 243/1020 already exported; skipping.
+Crafting BP 244/1020 - Class 2 Group 39
+BP 244/1020 already exported; skipping.
+Crafting BP 245/1020 - Class 2 Group 40
+BP 245/1020 already exported; skipping.
+Crafting BP 246/1020 - Class 2 Group 41
+BP 246/1020 already exported; skipping.
+Crafting BP 247/1020 - Class 2 Group 42
+BP 247/1020 already exported; skipping.
+Crafting BP 248/1020 - Class 2 Group 43
+BP 248/1020 already exported; skipping.
+Crafting BP 249/1020 - Class 2 Group 44
+BP 249/1020 already exported; skipping.
+Crafting BP 250/1020 - Class 2 Group 45
+BP 250/1020 already exported; skipping.
+Crafting BP 251/1020 - Class 2 Group 46
+BP 251/1020 already exported; skipping.
+Crafting BP 252/1020 - Class 2 Group 47
+BP 252/1020 already exported; skipping.
+Crafting BP 253/1020 - Class 2 Group 48
+BP 253/1020 already exported; skipping.
+Crafting BP 254/1020 - Class 2 Group 49
+BP 254/1020 already exported; skipping.
+Crafting BP 255/1020 - Class 2 Group 50
+BP 255/1020 already exported; skipping.
+Crafting BP 256/1020 - Class 2 Group 51
+BP 256/1020 already exported; skipping.
+Crafting BP 257/1020 - Class 2 Group 52
+BP 257/1020 already exported; skipping.
+Crafting BP 258/1020 - Class 2 Group 53
+BP 258/1020 already exported; skipping.
+Crafting BP 259/1020 - Class 2 Group 54
+BP 259/1020 already exported; skipping.
+Crafting BP 260/1020 - Class 2 Group 55
+BP 260/1020 already exported; skipping.
+Crafting BP 261/1020 - Class 2 Group 56
+BP 261/1020 already exported; skipping.
+Crafting BP 262/1020 - Class 2 Group 57
+BP 262/1020 already exported; skipping.
+Crafting BP 263/1020 - Class 2 Group 58
+BP 263/1020 already exported; skipping.
+Crafting BP 264/1020 - Class 2 Group 59
+BP 264/1020 already exported; skipping.
+Crafting BP 265/1020 - Class 2 Group 60
+BP 265/1020 already exported; skipping.
+Crafting BP 266/1020 - Class 2 Group 61
+BP 266/1020 already exported; skipping.
+Crafting BP 267/1020 - Class 2 Group 62
+BP 267/1020 already exported; skipping.
+Crafting BP 268/1020 - Class 2 Group 63
+BP 268/1020 already exported; skipping.
+Crafting BP 269/1020 - Class 2 Group 64
+BP 269/1020 already exported; skipping.
+Crafting BP 270/1020 - Class 2 Group 65
+BP 270/1020 already exported; skipping.
+Crafting BP 271/1020 - Class 2 Group 66
+BP 271/1020 already exported; skipping.
+Crafting BP 272/1020 - Class 2 Group 67
+BP 272/1020 already exported; skipping.
+Crafting BP 273/1020 - Class 2 Group 68
+BP 273/1020 already exported; skipping.
+Crafting BP 274/1020 - Class 2 Group 69
+BP 274/1020 already exported; skipping.
+Crafting BP 275/1020 - Class 2 Group 70
+BP 275/1020 already exported; skipping.
+Crafting BP 276/1020 - Class 2 Group 71
+BP 276/1020 already exported; skipping.
+Crafting BP 277/1020 - Class 2 Group 72
+BP 277/1020 already exported; skipping.
+Crafting BP 278/1020 - Class 2 Group 73
+BP 278/1020 already exported; skipping.
+Crafting BP 279/1020 - Class 2 Group 74
+BP 279/1020 already exported; skipping.
+Crafting BP 280/1020 - Class 2 Group 75
+BP 280/1020 already exported; skipping.
+Crafting BP 281/1020 - Class 2 Group 76
+BP 281/1020 already exported; skipping.
+Crafting BP 282/1020 - Class 2 Group 77
+BP 282/1020 already exported; skipping.
+Crafting BP 283/1020 - Class 2 Group 78
+BP 283/1020 already exported; skipping.
+Crafting BP 284/1020 - Class 2 Group 79
+BP 284/1020 already exported; skipping.
+Crafting BP 285/1020 - Class 2 Group 80
+BP 285/1020 already exported; skipping.
+Crafting BP 286/1020 - Class 2 Group 81
+BP 286/1020 already exported; skipping.
+Crafting BP 287/1020 - Class 2 Group 82
+BP 287/1020 already exported; skipping.
+Crafting BP 288/1020 - Class 2 Group 83
+BP 288/1020 already exported; skipping.
+Crafting BP 289/1020 - Class 2 Group 84
+BP 289/1020 already exported; skipping.
+Crafting BP 290/1020 - Class 2 Group 85
+BP 290/1020 already exported; skipping.
+Crafting BP 291/1020 - Class 2 Group 86
+BP 291/1020 already exported; skipping.
+Crafting BP 292/1020 - Class 2 Group 87
+BP 292/1020 already exported; skipping.
+Crafting BP 293/1020 - Class 2 Group 88
+BP 293/1020 already exported; skipping.
+Crafting BP 294/1020 - Class 2 Group 89
+BP 294/1020 already exported; skipping.
+Crafting BP 295/1020 - Class 2 Group 90
+BP 295/1020 already exported; skipping.
+Crafting BP 296/1020 - Class 2 Group 91
+BP 296/1020 already exported; skipping.
+Crafting BP 297/1020 - Class 2 Group 92
+BP 297/1020 already exported; skipping.
+Crafting BP 298/1020 - Class 2 Group 93
+BP 298/1020 already exported; skipping.
+Crafting BP 299/1020 - Class 2 Group 94
+BP 299/1020 already exported; skipping.
+Crafting BP 300/1020 - Class 2 Group 95
+BP 300/1020 already exported; skipping.
+Crafting BP 301/1020 - Class 2 Group 96
+BP 301/1020 already exported; skipping.
+Crafting BP 302/1020 - Class 2 Group 97
+BP 302/1020 already exported; skipping.
+Crafting BP 303/1020 - Class 2 Group 98
+BP 303/1020 already exported; skipping.
+Crafting BP 304/1020 - Class 2 Group 99
+BP 304/1020 already exported; skipping.
+Crafting BP 305/1020 - Class 2 Group 0
+BP 305/1020 already exported; skipping.
+Crafting BP 306/1020 - Class 2 Group 1
+BP 306/1020 already exported; skipping.
+Crafting BP 307/1020 - Class 3 Group 0
+BP 307/1020 already exported; skipping.
+Crafting BP 308/1020 - Class 3 Group 1
+BP 308/1020 already exported; skipping.
+Crafting BP 309/1020 - Class 3 Group 2
+BP 309/1020 already exported; skipping.
+Crafting BP 310/1020 - Class 3 Group 3
+BP 310/1020 already exported; skipping.
+Crafting BP 311/1020 - Class 3 Group 4
+BP 311/1020 already exported; skipping.
+Crafting BP 312/1020 - Class 3 Group 5
+BP 312/1020 already exported; skipping.
+Crafting BP 313/1020 - Class 3 Group 6
+BP 313/1020 already exported; skipping.
+Crafting BP 314/1020 - Class 3 Group 7
+BP 314/1020 already exported; skipping.
+Crafting BP 315/1020 - Class 3 Group 8
+BP 315/1020 already exported; skipping.
+Crafting BP 316/1020 - Class 3 Group 9
+BP 316/1020 already exported; skipping.
+Crafting BP 317/1020 - Class 3 Group 10
+BP 317/1020 already exported; skipping.
+Crafting BP 318/1020 - Class 3 Group 11
+BP 318/1020 already exported; skipping.
+Crafting BP 319/1020 - Class 3 Group 12
+BP 319/1020 already exported; skipping.
+Crafting BP 320/1020 - Class 3 Group 13
+BP 320/1020 already exported; skipping.
+Crafting BP 321/1020 - Class 3 Group 14
+BP 321/1020 already exported; skipping.
+Crafting BP 322/1020 - Class 3 Group 15
+BP 322/1020 already exported; skipping.
+Crafting BP 323/1020 - Class 3 Group 16
+BP 323/1020 already exported; skipping.
+Crafting BP 324/1020 - Class 3 Group 17
+BP 324/1020 already exported; skipping.
+Crafting BP 325/1020 - Class 3 Group 18
+BP 325/1020 already exported; skipping.
+Crafting BP 326/1020 - Class 3 Group 19
+BP 326/1020 already exported; skipping.
+Crafting BP 327/1020 - Class 3 Group 20
+BP 327/1020 already exported; skipping.
+Crafting BP 328/1020 - Class 3 Group 21
+BP 328/1020 already exported; skipping.
+Crafting BP 329/1020 - Class 3 Group 22
+BP 329/1020 already exported; skipping.
+Crafting BP 330/1020 - Class 3 Group 23
+BP 330/1020 already exported; skipping.
+Crafting BP 331/1020 - Class 3 Group 24
+BP 331/1020 already exported; skipping.
+Crafting BP 332/1020 - Class 3 Group 25
+BP 332/1020 already exported; skipping.
+Crafting BP 333/1020 - Class 3 Group 26
+BP 333/1020 already exported; skipping.
+Crafting BP 334/1020 - Class 3 Group 27
+BP 334/1020 already exported; skipping.
+Crafting BP 335/1020 - Class 3 Group 28
+BP 335/1020 already exported; skipping.
+Crafting BP 336/1020 - Class 3 Group 29
+BP 336/1020 already exported; skipping.
+Crafting BP 337/1020 - Class 3 Group 30
+BP 337/1020 already exported; skipping.
+Crafting BP 338/1020 - Class 3 Group 31
+BP 338/1020 already exported; skipping.
+Crafting BP 339/1020 - Class 3 Group 32
+BP 339/1020 already exported; skipping.
+Crafting BP 340/1020 - Class 3 Group 33
+BP 340/1020 already exported; skipping.
+Crafting BP 341/1020 - Class 3 Group 34
+BP 341/1020 already exported; skipping.
+Crafting BP 342/1020 - Class 3 Group 35
+BP 342/1020 already exported; skipping.
+Crafting BP 343/1020 - Class 3 Group 36
+BP 343/1020 already exported; skipping.
+Crafting BP 344/1020 - Class 3 Group 37
+BP 344/1020 already exported; skipping.
+Crafting BP 345/1020 - Class 3 Group 38
+BP 345/1020 already exported; skipping.
+Crafting BP 346/1020 - Class 3 Group 39
+BP 346/1020 already exported; skipping.
+Crafting BP 347/1020 - Class 3 Group 40
+BP 347/1020 already exported; skipping.
+Crafting BP 348/1020 - Class 3 Group 41
+BP 348/1020 already exported; skipping.
+Crafting BP 349/1020 - Class 3 Group 42
+BP 349/1020 already exported; skipping.
+Crafting BP 350/1020 - Class 3 Group 43
+BP 350/1020 already exported; skipping.
+Crafting BP 351/1020 - Class 3 Group 44
+BP 351/1020 already exported; skipping.
+Crafting BP 352/1020 - Class 3 Group 45
+BP 352/1020 already exported; skipping.
+Crafting BP 353/1020 - Class 3 Group 46
+BP 353/1020 already exported; skipping.
+Crafting BP 354/1020 - Class 3 Group 47
+BP 354/1020 already exported; skipping.
+Crafting BP 355/1020 - Class 3 Group 48
+BP 355/1020 already exported; skipping.
+Crafting BP 356/1020 - Class 3 Group 49
+BP 356/1020 already exported; skipping.
+Crafting BP 357/1020 - Class 3 Group 50
+BP 357/1020 already exported; skipping.
+Crafting BP 358/1020 - Class 3 Group 51
+BP 358/1020 already exported; skipping.
+Crafting BP 359/1020 - Class 3 Group 52
+BP 359/1020 already exported; skipping.
+Crafting BP 360/1020 - Class 3 Group 53
+BP 360/1020 already exported; skipping.
+Crafting BP 361/1020 - Class 3 Group 54
+BP 361/1020 already exported; skipping.
+Crafting BP 362/1020 - Class 3 Group 55
+BP 362/1020 already exported; skipping.
+Crafting BP 363/1020 - Class 3 Group 56
+BP 363/1020 already exported; skipping.
+Crafting BP 364/1020 - Class 3 Group 57
+BP 364/1020 already exported; skipping.
+Crafting BP 365/1020 - Class 3 Group 58
+BP 365/1020 already exported; skipping.
+Crafting BP 366/1020 - Class 3 Group 59
+BP 366/1020 already exported; skipping.
+Crafting BP 367/1020 - Class 3 Group 60
+BP 367/1020 already exported; skipping.
+Crafting BP 368/1020 - Class 3 Group 61
+BP 368/1020 already exported; skipping.
+Crafting BP 369/1020 - Class 3 Group 62
+BP 369/1020 already exported; skipping.
+Crafting BP 370/1020 - Class 3 Group 63
+BP 370/1020 already exported; skipping.
+Crafting BP 371/1020 - Class 3 Group 64
+BP 371/1020 already exported; skipping.
+Crafting BP 372/1020 - Class 3 Group 65
+BP 372/1020 already exported; skipping.
+Crafting BP 373/1020 - Class 3 Group 66
+BP 373/1020 already exported; skipping.
+Crafting BP 374/1020 - Class 3 Group 67
+BP 374/1020 already exported; skipping.
+Crafting BP 375/1020 - Class 3 Group 68
+BP 375/1020 already exported; skipping.
+Crafting BP 376/1020 - Class 3 Group 69
+BP 376/1020 already exported; skipping.
+Crafting BP 377/1020 - Class 3 Group 70
+BP 377/1020 already exported; skipping.
+Crafting BP 378/1020 - Class 3 Group 71
+BP 378/1020 already exported; skipping.
+Crafting BP 379/1020 - Class 3 Group 72
+BP 379/1020 already exported; skipping.
+Crafting BP 380/1020 - Class 3 Group 73
+BP 380/1020 already exported; skipping.
+Crafting BP 381/1020 - Class 3 Group 74
+BP 381/1020 already exported; skipping.
+Crafting BP 382/1020 - Class 3 Group 75
+BP 382/1020 already exported; skipping.
+Crafting BP 383/1020 - Class 3 Group 76
+BP 383/1020 already exported; skipping.
+Crafting BP 384/1020 - Class 3 Group 77
+BP 384/1020 already exported; skipping.
+Crafting BP 385/1020 - Class 3 Group 78
+BP 385/1020 already exported; skipping.
+Crafting BP 386/1020 - Class 3 Group 79
+BP 386/1020 already exported; skipping.
+Crafting BP 387/1020 - Class 3 Group 80
+BP 387/1020 already exported; skipping.
+Crafting BP 388/1020 - Class 3 Group 81
+BP 388/1020 already exported; skipping.
+Crafting BP 389/1020 - Class 3 Group 82
+BP 389/1020 already exported; skipping.
+Crafting BP 390/1020 - Class 3 Group 83
+BP 390/1020 already exported; skipping.
+Crafting BP 391/1020 - Class 3 Group 84
+BP 391/1020 already exported; skipping.
+Crafting BP 392/1020 - Class 3 Group 85
+BP 392/1020 already exported; skipping.
+Crafting BP 393/1020 - Class 3 Group 86
+BP 393/1020 already exported; skipping.
+Crafting BP 394/1020 - Class 3 Group 87
+BP 394/1020 already exported; skipping.
+Crafting BP 395/1020 - Class 3 Group 88
+BP 395/1020 already exported; skipping.
+Crafting BP 396/1020 - Class 3 Group 89
+BP 396/1020 already exported; skipping.
+Crafting BP 397/1020 - Class 3 Group 90
+BP 397/1020 already exported; skipping.
+Crafting BP 398/1020 - Class 3 Group 91
+BP 398/1020 already exported; skipping.
+Crafting BP 399/1020 - Class 3 Group 92
+BP 399/1020 already exported; skipping.
+Crafting BP 400/1020 - Class 3 Group 93
+BP 400/1020 already exported; skipping.
+Crafting BP 401/1020 - Class 3 Group 94
+BP 401/1020 already exported; skipping.
+Crafting BP 402/1020 - Class 3 Group 95
+BP 402/1020 already exported; skipping.
+Crafting BP 403/1020 - Class 3 Group 96
+BP 403/1020 already exported; skipping.
+Crafting BP 404/1020 - Class 3 Group 97
+BP 404/1020 already exported; skipping.
+Crafting BP 405/1020 - Class 3 Group 98
+BP 405/1020 already exported; skipping.
+Crafting BP 406/1020 - Class 3 Group 99
+BP 406/1020 already exported; skipping.
+Crafting BP 407/1020 - Class 3 Group 0
+BP 407/1020 already exported; skipping.
+Crafting BP 408/1020 - Class 3 Group 1
+BP 408/1020 already exported; skipping.
+Crafting BP 409/1020 - Class 4 Group 0
+BP 409/1020 already exported; skipping.
+Crafting BP 410/1020 - Class 4 Group 1
+BP 410/1020 already exported; skipping.
+Crafting BP 411/1020 - Class 4 Group 2
+BP 411/1020 already exported; skipping.
+Crafting BP 412/1020 - Class 4 Group 3
+BP 412/1020 already exported; skipping.
+Crafting BP 413/1020 - Class 4 Group 4
+BP 413/1020 already exported; skipping.
+Crafting BP 414/1020 - Class 4 Group 5
+BP 414/1020 already exported; skipping.
+Crafting BP 415/1020 - Class 4 Group 6
+BP 415/1020 already exported; skipping.
+Crafting BP 416/1020 - Class 4 Group 7
+BP 416/1020 already exported; skipping.
+Crafting BP 417/1020 - Class 4 Group 8
+BP 417/1020 already exported; skipping.
+Crafting BP 418/1020 - Class 4 Group 9
+BP 418/1020 already exported; skipping.
+Crafting BP 419/1020 - Class 4 Group 10
+BP 419/1020 already exported; skipping.
+Crafting BP 420/1020 - Class 4 Group 11
+BP 420/1020 already exported; skipping.
+Crafting BP 421/1020 - Class 4 Group 12
+BP 421/1020 already exported; skipping.
+Crafting BP 422/1020 - Class 4 Group 13
+BP 422/1020 already exported; skipping.
+Crafting BP 423/1020 - Class 4 Group 14
+BP 423/1020 already exported; skipping.
+Crafting BP 424/1020 - Class 4 Group 15
+BP 424/1020 already exported; skipping.
+Crafting BP 425/1020 - Class 4 Group 16
+BP 425/1020 already exported; skipping.
+Crafting BP 426/1020 - Class 4 Group 17
+BP 426/1020 already exported; skipping.
+Crafting BP 427/1020 - Class 4 Group 18
+BP 427/1020 already exported; skipping.
+Crafting BP 428/1020 - Class 4 Group 19
+BP 428/1020 already exported; skipping.
+Crafting BP 429/1020 - Class 4 Group 20
+BP 429/1020 already exported; skipping.
+Crafting BP 430/1020 - Class 4 Group 21
+BP 430/1020 already exported; skipping.
+Crafting BP 431/1020 - Class 4 Group 22
+BP 431/1020 already exported; skipping.
+Crafting BP 432/1020 - Class 4 Group 23
+BP 432/1020 already exported; skipping.
+Crafting BP 433/1020 - Class 4 Group 24
+BP 433/1020 already exported; skipping.
+Crafting BP 434/1020 - Class 4 Group 25
+BP 434/1020 already exported; skipping.
+Crafting BP 435/1020 - Class 4 Group 26
+BP 435/1020 already exported; skipping.
+Crafting BP 436/1020 - Class 4 Group 27
+BP 436/1020 already exported; skipping.
+Crafting BP 437/1020 - Class 4 Group 28
+BP 437/1020 already exported; skipping.
+Crafting BP 438/1020 - Class 4 Group 29
+BP 438/1020 already exported; skipping.
+Crafting BP 439/1020 - Class 4 Group 30
+BP 439/1020 already exported; skipping.
+Crafting BP 440/1020 - Class 4 Group 31
+BP 440/1020 already exported; skipping.
+Crafting BP 441/1020 - Class 4 Group 32
+BP 441/1020 already exported; skipping.
+Crafting BP 442/1020 - Class 4 Group 33
+BP 442/1020 already exported; skipping.
+Crafting BP 443/1020 - Class 4 Group 34
+BP 443/1020 already exported; skipping.
+Crafting BP 444/1020 - Class 4 Group 35
+BP 444/1020 already exported; skipping.
+Crafting BP 445/1020 - Class 4 Group 36
+BP 445/1020 already exported; skipping.
+Crafting BP 446/1020 - Class 4 Group 37
+BP 446/1020 already exported; skipping.
+Crafting BP 447/1020 - Class 4 Group 38
+BP 447/1020 already exported; skipping.
+Crafting BP 448/1020 - Class 4 Group 39
+BP 448/1020 already exported; skipping.
+Crafting BP 449/1020 - Class 4 Group 40
+BP 449/1020 already exported; skipping.
+Crafting BP 450/1020 - Class 4 Group 41
+BP 450/1020 already exported; skipping.
+Crafting BP 451/1020 - Class 4 Group 42
+BP 451/1020 already exported; skipping.
+Crafting BP 452/1020 - Class 4 Group 43
+BP 452/1020 already exported; skipping.
+Crafting BP 453/1020 - Class 4 Group 44
+BP 453/1020 already exported; skipping.
+Crafting BP 454/1020 - Class 4 Group 45
+BP 454/1020 already exported; skipping.
+Crafting BP 455/1020 - Class 4 Group 46
+BP 455/1020 already exported; skipping.
+Crafting BP 456/1020 - Class 4 Group 47
+BP 456/1020 already exported; skipping.
+Crafting BP 457/1020 - Class 4 Group 48
+BP 457/1020 already exported; skipping.
+Crafting BP 458/1020 - Class 4 Group 49
+BP 458/1020 already exported; skipping.
+Crafting BP 459/1020 - Class 4 Group 50
+BP 459/1020 already exported; skipping.
+Crafting BP 460/1020 - Class 4 Group 51
+BP 460/1020 already exported; skipping.
+Crafting BP 461/1020 - Class 4 Group 52
+BP 461/1020 already exported; skipping.
+Crafting BP 462/1020 - Class 4 Group 53
+BP 462/1020 already exported; skipping.
+Crafting BP 463/1020 - Class 4 Group 54
+BP 463/1020 already exported; skipping.
+Crafting BP 464/1020 - Class 4 Group 55
+BP 464/1020 already exported; skipping.
+Crafting BP 465/1020 - Class 4 Group 56
+BP 465/1020 already exported; skipping.
+Crafting BP 466/1020 - Class 4 Group 57
+BP 466/1020 already exported; skipping.
+Crafting BP 467/1020 - Class 4 Group 58
+BP 467/1020 already exported; skipping.
+Crafting BP 468/1020 - Class 4 Group 59
+BP 468/1020 already exported; skipping.
+Crafting BP 469/1020 - Class 4 Group 60
+BP 469/1020 already exported; skipping.
+Crafting BP 470/1020 - Class 4 Group 61
+BP 470/1020 already exported; skipping.
+Crafting BP 471/1020 - Class 4 Group 62
+BP 471/1020 already exported; skipping.
+Crafting BP 472/1020 - Class 4 Group 63
+BP 472/1020 already exported; skipping.
+Crafting BP 473/1020 - Class 4 Group 64
+BP 473/1020 already exported; skipping.
+Crafting BP 474/1020 - Class 4 Group 65
+BP 474/1020 already exported; skipping.
+Crafting BP 475/1020 - Class 4 Group 66
+BP 475/1020 already exported; skipping.
+Crafting BP 476/1020 - Class 4 Group 67
+BP 476/1020 already exported; skipping.
+Crafting BP 477/1020 - Class 4 Group 68
+BP 477/1020 already exported; skipping.
+Crafting BP 478/1020 - Class 4 Group 69
+BP 478/1020 already exported; skipping.
+Crafting BP 479/1020 - Class 4 Group 70
+BP 479/1020 already exported; skipping.
+Crafting BP 480/1020 - Class 4 Group 71
+BP 480/1020 already exported; skipping.
+Crafting BP 481/1020 - Class 4 Group 72
+BP 481/1020 already exported; skipping.
+Crafting BP 482/1020 - Class 4 Group 73
+BP 482/1020 already exported; skipping.
+Crafting BP 483/1020 - Class 4 Group 74
+BP 483/1020 already exported; skipping.
+Crafting BP 484/1020 - Class 4 Group 75
+BP 484/1020 already exported; skipping.
+Crafting BP 485/1020 - Class 4 Group 76
+BP 485/1020 already exported; skipping.
+Crafting BP 486/1020 - Class 4 Group 77
+BP 486/1020 already exported; skipping.
+Crafting BP 487/1020 - Class 4 Group 78
+BP 487/1020 already exported; skipping.
+Crafting BP 488/1020 - Class 4 Group 79
+BP 488/1020 already exported; skipping.
+Crafting BP 489/1020 - Class 4 Group 80
+BP 489/1020 already exported; skipping.
+Crafting BP 490/1020 - Class 4 Group 81
+BP 490/1020 already exported; skipping.
+Crafting BP 491/1020 - Class 4 Group 82
+BP 491/1020 already exported; skipping.
+Crafting BP 492/1020 - Class 4 Group 83
+BP 492/1020 already exported; skipping.
+Crafting BP 493/1020 - Class 4 Group 84
+BP 493/1020 already exported; skipping.
+Crafting BP 494/1020 - Class 4 Group 85
+BP 494/1020 already exported; skipping.
+Crafting BP 495/1020 - Class 4 Group 86
+BP 495/1020 already exported; skipping.
+Crafting BP 496/1020 - Class 4 Group 87
+BP 496/1020 already exported; skipping.
+Crafting BP 497/1020 - Class 4 Group 88
+BP 497/1020 already exported; skipping.
+Crafting BP 498/1020 - Class 4 Group 89
+BP 498/1020 already exported; skipping.
+Crafting BP 499/1020 - Class 4 Group 90
+BP 499/1020 already exported; skipping.
+Crafting BP 500/1020 - Class 4 Group 91
+BP 500/1020 already exported; skipping.
+Crafting BP 501/1020 - Class 4 Group 92
+BP 501/1020 already exported; skipping.
+Crafting BP 502/1020 - Class 4 Group 93
+BP 502/1020 already exported; skipping.
+Crafting BP 503/1020 - Class 4 Group 94
+BP 503/1020 already exported; skipping.
+Crafting BP 504/1020 - Class 4 Group 95
+BP 504/1020 already exported; skipping.
+Crafting BP 505/1020 - Class 4 Group 96
+BP 505/1020 already exported; skipping.
+Crafting BP 506/1020 - Class 4 Group 97
+BP 506/1020 already exported; skipping.
+Crafting BP 507/1020 - Class 4 Group 98
+BP 507/1020 already exported; skipping.
+Crafting BP 508/1020 - Class 4 Group 99
+BP 508/1020 already exported; skipping.
+Crafting BP 509/1020 - Class 4 Group 0
+BP 509/1020 already exported; skipping.
+Crafting BP 510/1020 - Class 4 Group 1
+BP 510/1020 already exported; skipping.
+Crafting BP 511/1020 - Class 5 Group 0
+BP 511/1020 already exported; skipping.
+Crafting BP 512/1020 - Class 5 Group 1
+BP 512/1020 already exported; skipping.
+Crafting BP 513/1020 - Class 5 Group 2
+BP 513/1020 already exported; skipping.
+Crafting BP 514/1020 - Class 5 Group 3
+BP 514/1020 already exported; skipping.
+Crafting BP 515/1020 - Class 5 Group 4
+BP 515/1020 already exported; skipping.
+Crafting BP 516/1020 - Class 5 Group 5
+BP 516/1020 already exported; skipping.
+Crafting BP 517/1020 - Class 5 Group 6
+BP 517/1020 already exported; skipping.
+Crafting BP 518/1020 - Class 5 Group 7
+BP 518/1020 already exported; skipping.
+Crafting BP 519/1020 - Class 5 Group 8
+BP 519/1020 already exported; skipping.
+Crafting BP 520/1020 - Class 5 Group 9
+BP 520/1020 already exported; skipping.
+Crafting BP 521/1020 - Class 5 Group 10
+BP 521/1020 already exported; skipping.
+Crafting BP 522/1020 - Class 5 Group 11
+BP 522/1020 already exported; skipping.
+Crafting BP 523/1020 - Class 5 Group 12
+BP 523/1020 already exported; skipping.
+Crafting BP 524/1020 - Class 5 Group 13
+BP 524/1020 already exported; skipping.
+Crafting BP 525/1020 - Class 5 Group 14
+BP 525/1020 already exported; skipping.
+Crafting BP 526/1020 - Class 5 Group 15
+BP 526/1020 already exported; skipping.
+Crafting BP 527/1020 - Class 5 Group 16
+BP 527/1020 already exported; skipping.
+Crafting BP 528/1020 - Class 5 Group 17
+BP 528/1020 already exported; skipping.
+Crafting BP 529/1020 - Class 5 Group 18
+BP 529/1020 already exported; skipping.
+Crafting BP 530/1020 - Class 5 Group 19
+BP 530/1020 already exported; skipping.
+Crafting BP 531/1020 - Class 5 Group 20
+BP 531/1020 already exported; skipping.
+Crafting BP 532/1020 - Class 5 Group 21
+BP 532/1020 already exported; skipping.
+Crafting BP 533/1020 - Class 5 Group 22
+BP 533/1020 already exported; skipping.
+Crafting BP 534/1020 - Class 5 Group 23
+BP 534/1020 already exported; skipping.
+Crafting BP 535/1020 - Class 5 Group 24
+BP 535/1020 already exported; skipping.
+Crafting BP 536/1020 - Class 5 Group 25
+BP 536/1020 already exported; skipping.
+Crafting BP 537/1020 - Class 5 Group 26
+BP 537/1020 already exported; skipping.
+Crafting BP 538/1020 - Class 5 Group 27
+BP 538/1020 already exported; skipping.
+Crafting BP 539/1020 - Class 5 Group 28
+BP 539/1020 already exported; skipping.
+Crafting BP 540/1020 - Class 5 Group 29
+BP 540/1020 already exported; skipping.
+Crafting BP 541/1020 - Class 5 Group 30
+BP 541/1020 already exported; skipping.
+Crafting BP 542/1020 - Class 5 Group 31
+BP 542/1020 already exported; skipping.
+Crafting BP 543/1020 - Class 5 Group 32
+BP 543/1020 already exported; skipping.
+Crafting BP 544/1020 - Class 5 Group 33
+BP 544/1020 already exported; skipping.
+Crafting BP 545/1020 - Class 5 Group 34
+BP 545/1020 already exported; skipping.
+Crafting BP 546/1020 - Class 5 Group 35
+BP 546/1020 already exported; skipping.
+Crafting BP 547/1020 - Class 5 Group 36
+BP 547/1020 already exported; skipping.
+Crafting BP 548/1020 - Class 5 Group 37
+BP 548/1020 already exported; skipping.
+Crafting BP 549/1020 - Class 5 Group 38
+BP 549/1020 already exported; skipping.
+Crafting BP 550/1020 - Class 5 Group 39
+BP 550/1020 already exported; skipping.
+Crafting BP 551/1020 - Class 5 Group 40
+BP 551/1020 already exported; skipping.
+Crafting BP 552/1020 - Class 5 Group 41
+BP 552/1020 already exported; skipping.
+Crafting BP 553/1020 - Class 5 Group 42
+BP 553/1020 already exported; skipping.
+Crafting BP 554/1020 - Class 5 Group 43
+BP 554/1020 already exported; skipping.
+Crafting BP 555/1020 - Class 5 Group 44
+BP 555/1020 already exported; skipping.
+Crafting BP 556/1020 - Class 5 Group 45
+BP 556/1020 already exported; skipping.
+Crafting BP 557/1020 - Class 5 Group 46
+BP 557/1020 already exported; skipping.
+Crafting BP 558/1020 - Class 5 Group 47
+BP 558/1020 already exported; skipping.
+Crafting BP 559/1020 - Class 5 Group 48
+BP 559/1020 already exported; skipping.
+Crafting BP 560/1020 - Class 5 Group 49
+BP 560/1020 already exported; skipping.
+Crafting BP 561/1020 - Class 5 Group 50
+BP 561/1020 already exported; skipping.
+Crafting BP 562/1020 - Class 5 Group 51
+BP 562/1020 already exported; skipping.
+Crafting BP 563/1020 - Class 5 Group 52
+BP 563/1020 already exported; skipping.
+Crafting BP 564/1020 - Class 5 Group 53
+BP 564/1020 already exported; skipping.
+Crafting BP 565/1020 - Class 5 Group 54
+BP 565/1020 already exported; skipping.
+Crafting BP 566/1020 - Class 5 Group 55
+BP 566/1020 already exported; skipping.
+Crafting BP 567/1020 - Class 5 Group 56
+BP 567/1020 already exported; skipping.
+Crafting BP 568/1020 - Class 5 Group 57
+BP 568/1020 already exported; skipping.
+Crafting BP 569/1020 - Class 5 Group 58
+BP 569/1020 already exported; skipping.
+Crafting BP 570/1020 - Class 5 Group 59
+BP 570/1020 already exported; skipping.
+Crafting BP 571/1020 - Class 5 Group 60
+BP 571/1020 already exported; skipping.
+Crafting BP 572/1020 - Class 5 Group 61
+BP 572/1020 already exported; skipping.
+Crafting BP 573/1020 - Class 5 Group 62
+BP 573/1020 already exported; skipping.
+Crafting BP 574/1020 - Class 5 Group 63
+BP 574/1020 already exported; skipping.
+Crafting BP 575/1020 - Class 5 Group 64
+BP 575/1020 already exported; skipping.
+Crafting BP 576/1020 - Class 5 Group 65
+BP 576/1020 already exported; skipping.
+Crafting BP 577/1020 - Class 5 Group 66
+BP 577/1020 already exported; skipping.
+Crafting BP 578/1020 - Class 5 Group 67
+BP 578/1020 already exported; skipping.
+Crafting BP 579/1020 - Class 5 Group 68
+BP 579/1020 already exported; skipping.
+Crafting BP 580/1020 - Class 5 Group 69
+BP 580/1020 already exported; skipping.
+Crafting BP 581/1020 - Class 5 Group 70
+BP 581/1020 already exported; skipping.
+Crafting BP 582/1020 - Class 5 Group 71
+BP 582/1020 already exported; skipping.
+Crafting BP 583/1020 - Class 5 Group 72
+BP 583/1020 already exported; skipping.
+Crafting BP 584/1020 - Class 5 Group 73
+BP 584/1020 already exported; skipping.
+Crafting BP 585/1020 - Class 5 Group 74
+BP 585/1020 already exported; skipping.
+Crafting BP 586/1020 - Class 5 Group 75
+BP 586/1020 already exported; skipping.
+Crafting BP 587/1020 - Class 5 Group 76
+BP 587/1020 already exported; skipping.
+Crafting BP 588/1020 - Class 5 Group 77
+BP 588/1020 already exported; skipping.
+Crafting BP 589/1020 - Class 5 Group 78
+BP 589/1020 already exported; skipping.
+Crafting BP 590/1020 - Class 5 Group 79
+BP 590/1020 already exported; skipping.
+Crafting BP 591/1020 - Class 5 Group 80
+BP 591/1020 already exported; skipping.
+Crafting BP 592/1020 - Class 5 Group 81
+BP 592/1020 already exported; skipping.
+Crafting BP 593/1020 - Class 5 Group 82
+BP 593/1020 already exported; skipping.
+Crafting BP 594/1020 - Class 5 Group 83
+BP 594/1020 already exported; skipping.
+Crafting BP 595/1020 - Class 5 Group 84
+BP 595/1020 already exported; skipping.
+Crafting BP 596/1020 - Class 5 Group 85
+BP 596/1020 already exported; skipping.
+Crafting BP 597/1020 - Class 5 Group 86
+BP 597/1020 already exported; skipping.
+Crafting BP 598/1020 - Class 5 Group 87
+BP 598/1020 already exported; skipping.
+Crafting BP 599/1020 - Class 5 Group 88
+BP 599/1020 already exported; skipping.
+Crafting BP 600/1020 - Class 5 Group 89
+BP 600/1020 already exported; skipping.
+Crafting BP 601/1020 - Class 5 Group 90
+BP 601/1020 already exported; skipping.
+Crafting BP 602/1020 - Class 5 Group 91
+BP 602/1020 already exported; skipping.
+Crafting BP 603/1020 - Class 5 Group 92
+BP 603/1020 already exported; skipping.
+Crafting BP 604/1020 - Class 5 Group 93
+BP 604/1020 already exported; skipping.
+Crafting BP 605/1020 - Class 5 Group 94
+BP 605/1020 already exported; skipping.
+Crafting BP 606/1020 - Class 5 Group 95
+BP 606/1020 already exported; skipping.
+Crafting BP 607/1020 - Class 5 Group 96
+BP 607/1020 already exported; skipping.
+Crafting BP 608/1020 - Class 5 Group 97
+BP 608/1020 already exported; skipping.
+Crafting BP 609/1020 - Class 5 Group 98
+BP 609/1020 already exported; skipping.
+Crafting BP 610/1020 - Class 5 Group 99
+BP 610/1020 already exported; skipping.
+Crafting BP 611/1020 - Class 5 Group 0
+BP 611/1020 already exported; skipping.
+Crafting BP 612/1020 - Class 5 Group 1
+BP 612/1020 already exported; skipping.
+Crafting BP 613/1020 - Class 6 Group 0
+BP 613/1020 already exported; skipping.
+Crafting BP 614/1020 - Class 6 Group 1
+BP 614/1020 already exported; skipping.
+Crafting BP 615/1020 - Class 6 Group 2
+BP 615/1020 already exported; skipping.
+Crafting BP 616/1020 - Class 6 Group 3
+BP 616/1020 already exported; skipping.
+Crafting BP 617/1020 - Class 6 Group 4
+BP 617/1020 already exported; skipping.
+Crafting BP 618/1020 - Class 6 Group 5
+BP 618/1020 already exported; skipping.
+Crafting BP 619/1020 - Class 6 Group 6
+BP 619/1020 already exported; skipping.
+Crafting BP 620/1020 - Class 6 Group 7
+BP 620/1020 already exported; skipping.
+Crafting BP 621/1020 - Class 6 Group 8
+BP 621/1020 already exported; skipping.
+Crafting BP 622/1020 - Class 6 Group 9
+BP 622/1020 already exported; skipping.
+Crafting BP 623/1020 - Class 6 Group 10
+BP 623/1020 already exported; skipping.
+Crafting BP 624/1020 - Class 6 Group 11
+BP 624/1020 already exported; skipping.
+Crafting BP 625/1020 - Class 6 Group 12
+BP 625/1020 already exported; skipping.
+Crafting BP 626/1020 - Class 6 Group 13
+BP 626/1020 already exported; skipping.
+Crafting BP 627/1020 - Class 6 Group 14
+BP 627/1020 already exported; skipping.
+Crafting BP 628/1020 - Class 6 Group 15
+BP 628/1020 already exported; skipping.
+Crafting BP 629/1020 - Class 6 Group 16
+BP 629/1020 already exported; skipping.
+Crafting BP 630/1020 - Class 6 Group 17
+BP 630/1020 already exported; skipping.
+Crafting BP 631/1020 - Class 6 Group 18
+BP 631/1020 already exported; skipping.
+Crafting BP 632/1020 - Class 6 Group 19
+BP 632/1020 already exported; skipping.
+Crafting BP 633/1020 - Class 6 Group 20
+BP 633/1020 already exported; skipping.
+Crafting BP 634/1020 - Class 6 Group 21
+BP 634/1020 already exported; skipping.
+Crafting BP 635/1020 - Class 6 Group 22
+BP 635/1020 already exported; skipping.
+Crafting BP 636/1020 - Class 6 Group 23
+BP 636/1020 already exported; skipping.
+Crafting BP 637/1020 - Class 6 Group 24
+BP 637/1020 already exported; skipping.
+Crafting BP 638/1020 - Class 6 Group 25
+BP 638/1020 already exported; skipping.
+Crafting BP 639/1020 - Class 6 Group 26
+BP 639/1020 already exported; skipping.
+Crafting BP 640/1020 - Class 6 Group 27
+BP 640/1020 already exported; skipping.
+Crafting BP 641/1020 - Class 6 Group 28
+BP 641/1020 already exported; skipping.
+Crafting BP 642/1020 - Class 6 Group 29
+BP 642/1020 already exported; skipping.
+Crafting BP 643/1020 - Class 6 Group 30
+BP 643/1020 already exported; skipping.
+Crafting BP 644/1020 - Class 6 Group 31
+BP 644/1020 already exported; skipping.
+Crafting BP 645/1020 - Class 6 Group 32
+BP 645/1020 already exported; skipping.
+Crafting BP 646/1020 - Class 6 Group 33
+BP 646/1020 already exported; skipping.
+Crafting BP 647/1020 - Class 6 Group 34
+BP 647/1020 already exported; skipping.
+Crafting BP 648/1020 - Class 6 Group 35
+BP 648/1020 already exported; skipping.
+Crafting BP 649/1020 - Class 6 Group 36
+BP 649/1020 already exported; skipping.
+Crafting BP 650/1020 - Class 6 Group 37
+BP 650/1020 already exported; skipping.
+Crafting BP 651/1020 - Class 6 Group 38
+BP 651/1020 already exported; skipping.
+Crafting BP 652/1020 - Class 6 Group 39
+BP 652/1020 already exported; skipping.
+Crafting BP 653/1020 - Class 6 Group 40
+BP 653/1020 already exported; skipping.
+Crafting BP 654/1020 - Class 6 Group 41
+BP 654/1020 already exported; skipping.
+Crafting BP 655/1020 - Class 6 Group 42
+BP 655/1020 already exported; skipping.
+Crafting BP 656/1020 - Class 6 Group 43
+BP 656/1020 already exported; skipping.
+Crafting BP 657/1020 - Class 6 Group 44
+BP 657/1020 already exported; skipping.
+Crafting BP 658/1020 - Class 6 Group 45
+BP 658/1020 already exported; skipping.
+Crafting BP 659/1020 - Class 6 Group 46
+BP 659/1020 already exported; skipping.
+Crafting BP 660/1020 - Class 6 Group 47
+BP 660/1020 already exported; skipping.
+Crafting BP 661/1020 - Class 6 Group 48
+BP 661/1020 already exported; skipping.
+Crafting BP 662/1020 - Class 6 Group 49
+BP 662/1020 already exported; skipping.
+Crafting BP 663/1020 - Class 6 Group 50
+BP 663/1020 already exported; skipping.
+Crafting BP 664/1020 - Class 6 Group 51
+BP 664/1020 already exported; skipping.
+Crafting BP 665/1020 - Class 6 Group 52
+BP 665/1020 already exported; skipping.
+Crafting BP 666/1020 - Class 6 Group 53
+BP 666/1020 already exported; skipping.
+Crafting BP 667/1020 - Class 6 Group 54
+BP 667/1020 already exported; skipping.
+Crafting BP 668/1020 - Class 6 Group 55
+BP 668/1020 already exported; skipping.
+Crafting BP 669/1020 - Class 6 Group 56
+BP 669/1020 already exported; skipping.
+Crafting BP 670/1020 - Class 6 Group 57
+BP 670/1020 already exported; skipping.
+Crafting BP 671/1020 - Class 6 Group 58
+BP 671/1020 already exported; skipping.
+Crafting BP 672/1020 - Class 6 Group 59
+BP 672/1020 already exported; skipping.
+Crafting BP 673/1020 - Class 6 Group 60
+BP 673/1020 already exported; skipping.
+Crafting BP 674/1020 - Class 6 Group 61
+BP 674/1020 already exported; skipping.
+Crafting BP 675/1020 - Class 6 Group 62
+BP 675/1020 already exported; skipping.
+Crafting BP 676/1020 - Class 6 Group 63
+BP 676/1020 already exported; skipping.
+Crafting BP 677/1020 - Class 6 Group 64
+BP 677/1020 already exported; skipping.
+Crafting BP 678/1020 - Class 6 Group 65
+BP 678/1020 already exported; skipping.
+Crafting BP 679/1020 - Class 6 Group 66
+BP 679/1020 already exported; skipping.
+Crafting BP 680/1020 - Class 6 Group 67
+BP 680/1020 already exported; skipping.
+Crafting BP 681/1020 - Class 6 Group 68
+BP 681/1020 already exported; skipping.
+Crafting BP 682/1020 - Class 6 Group 69
+BP 682/1020 already exported; skipping.
+Crafting BP 683/1020 - Class 6 Group 70
+BP 683/1020 already exported; skipping.
+Crafting BP 684/1020 - Class 6 Group 71
+BP 684/1020 already exported; skipping.
+Crafting BP 685/1020 - Class 6 Group 72
+BP 685/1020 already exported; skipping.
+Crafting BP 686/1020 - Class 6 Group 73
+BP 686/1020 already exported; skipping.
+Crafting BP 687/1020 - Class 6 Group 74
+BP 687/1020 already exported; skipping.
+Crafting BP 688/1020 - Class 6 Group 75
+BP 688/1020 already exported; skipping.
+Crafting BP 689/1020 - Class 6 Group 76
+BP 689/1020 already exported; skipping.
+Crafting BP 690/1020 - Class 6 Group 77
+BP 690/1020 already exported; skipping.
+Crafting BP 691/1020 - Class 6 Group 78
+BP 691/1020 already exported; skipping.
+Crafting BP 692/1020 - Class 6 Group 79
+BP 692/1020 already exported; skipping.
+Crafting BP 693/1020 - Class 6 Group 80
+BP 693/1020 already exported; skipping.
+Crafting BP 694/1020 - Class 6 Group 81
+BP 694/1020 already exported; skipping.
+Crafting BP 695/1020 - Class 6 Group 82
+BP 695/1020 already exported; skipping.
+Crafting BP 696/1020 - Class 6 Group 83
+BP 696/1020 already exported; skipping.
+Crafting BP 697/1020 - Class 6 Group 84
+BP 697/1020 already exported; skipping.
+Crafting BP 698/1020 - Class 6 Group 85
+BP 698/1020 already exported; skipping.
+Crafting BP 699/1020 - Class 6 Group 86
+BP 699/1020 already exported; skipping.
+Crafting BP 700/1020 - Class 6 Group 87
+BP 700/1020 already exported; skipping.
+Crafting BP 701/1020 - Class 6 Group 88
+BP 701/1020 already exported; skipping.
+Crafting BP 702/1020 - Class 6 Group 89
+BP 702/1020 already exported; skipping.
+Crafting BP 703/1020 - Class 6 Group 90
+BP 703/1020 already exported; skipping.
+Crafting BP 704/1020 - Class 6 Group 91
+BP 704/1020 already exported; skipping.
+Crafting BP 705/1020 - Class 6 Group 92
+BP 705/1020 already exported; skipping.
+Crafting BP 706/1020 - Class 6 Group 93
+BP 706/1020 already exported; skipping.
+Crafting BP 707/1020 - Class 6 Group 94
+BP 707/1020 already exported; skipping.
+Crafting BP 708/1020 - Class 6 Group 95
+BP 708/1020 already exported; skipping.
+Crafting BP 709/1020 - Class 6 Group 96
+BP 709/1020 already exported; skipping.
+Crafting BP 710/1020 - Class 6 Group 97
+BP 710/1020 already exported; skipping.
+Crafting BP 711/1020 - Class 6 Group 98
+BP 711/1020 already exported; skipping.
+Crafting BP 712/1020 - Class 6 Group 99
+BP 712/1020 already exported; skipping.
+Crafting BP 713/1020 - Class 6 Group 0
+BP 713/1020 already exported; skipping.
+Crafting BP 714/1020 - Class 6 Group 1
+BP 714/1020 already exported; skipping.
+Crafting BP 715/1020 - Class 7 Group 0
+BP 715/1020 already exported; skipping.
+Crafting BP 716/1020 - Class 7 Group 1
+BP 716/1020 already exported; skipping.
+Crafting BP 717/1020 - Class 7 Group 2
+BP 717/1020 already exported; skipping.
+Crafting BP 718/1020 - Class 7 Group 3
+BP 718/1020 already exported; skipping.
+Crafting BP 719/1020 - Class 7 Group 4
+BP 719/1020 already exported; skipping.
+Crafting BP 720/1020 - Class 7 Group 5
+BP 720/1020 already exported; skipping.
+Crafting BP 721/1020 - Class 7 Group 6
+BP 721/1020 already exported; skipping.
+Crafting BP 722/1020 - Class 7 Group 7
+BP 722/1020 already exported; skipping.
+Crafting BP 723/1020 - Class 7 Group 8
+BP 723/1020 already exported; skipping.
+Crafting BP 724/1020 - Class 7 Group 9
+BP 724/1020 already exported; skipping.
+Crafting BP 725/1020 - Class 7 Group 10
+BP 725/1020 already exported; skipping.
+Crafting BP 726/1020 - Class 7 Group 11
+BP 726/1020 already exported; skipping.
+Crafting BP 727/1020 - Class 7 Group 12
+BP 727/1020 already exported; skipping.
+Crafting BP 728/1020 - Class 7 Group 13
+BP 728/1020 already exported; skipping.
+Crafting BP 729/1020 - Class 7 Group 14
+BP 729/1020 already exported; skipping.
+Crafting BP 730/1020 - Class 7 Group 15
+BP 730/1020 already exported; skipping.
+Crafting BP 731/1020 - Class 7 Group 16
+BP 731/1020 already exported; skipping.
+Crafting BP 732/1020 - Class 7 Group 17
+BP 732/1020 already exported; skipping.
+Crafting BP 733/1020 - Class 7 Group 18
+BP 733/1020 already exported; skipping.
+Crafting BP 734/1020 - Class 7 Group 19
+BP 734/1020 already exported; skipping.
+Crafting BP 735/1020 - Class 7 Group 20
+BP 735/1020 already exported; skipping.
+Crafting BP 736/1020 - Class 7 Group 21
+BP 736/1020 already exported; skipping.
+Crafting BP 737/1020 - Class 7 Group 22
+BP 737/1020 already exported; skipping.
+Crafting BP 738/1020 - Class 7 Group 23
+BP 738/1020 already exported; skipping.
+Crafting BP 739/1020 - Class 7 Group 24
+BP 739/1020 already exported; skipping.
+Crafting BP 740/1020 - Class 7 Group 25
+BP 740/1020 already exported; skipping.
+Crafting BP 741/1020 - Class 7 Group 26
+BP 741/1020 already exported; skipping.
+Crafting BP 742/1020 - Class 7 Group 27
+BP 742/1020 already exported; skipping.
+Crafting BP 743/1020 - Class 7 Group 28
+BP 743/1020 already exported; skipping.
+Crafting BP 744/1020 - Class 7 Group 29
+BP 744/1020 already exported; skipping.
+Crafting BP 745/1020 - Class 7 Group 30
+BP 745/1020 already exported; skipping.
+Crafting BP 746/1020 - Class 7 Group 31
+BP 746/1020 already exported; skipping.
+Crafting BP 747/1020 - Class 7 Group 32
+BP 747/1020 already exported; skipping.
+Crafting BP 748/1020 - Class 7 Group 33
+BP 748/1020 already exported; skipping.
+Crafting BP 749/1020 - Class 7 Group 34
+BP 749/1020 already exported; skipping.
+Crafting BP 750/1020 - Class 7 Group 35
+BP 750/1020 already exported; skipping.
+Crafting BP 751/1020 - Class 7 Group 36
+BP 751/1020 already exported; skipping.
+Crafting BP 752/1020 - Class 7 Group 37
+BP 752/1020 already exported; skipping.
+Crafting BP 753/1020 - Class 7 Group 38
+BP 753/1020 already exported; skipping.
+Crafting BP 754/1020 - Class 7 Group 39
+BP 754/1020 already exported; skipping.
+Crafting BP 755/1020 - Class 7 Group 40
+BP 755/1020 already exported; skipping.
+Crafting BP 756/1020 - Class 7 Group 41
+BP 756/1020 already exported; skipping.
+Crafting BP 757/1020 - Class 7 Group 42
+BP 757/1020 already exported; skipping.
+Crafting BP 758/1020 - Class 7 Group 43
+BP 758/1020 already exported; skipping.
+Crafting BP 759/1020 - Class 7 Group 44
+BP 759/1020 already exported; skipping.
+Crafting BP 760/1020 - Class 7 Group 45
+BP 760/1020 already exported; skipping.
+Crafting BP 761/1020 - Class 7 Group 46
+BP 761/1020 already exported; skipping.
+Crafting BP 762/1020 - Class 7 Group 47
+BP 762/1020 already exported; skipping.
+Crafting BP 763/1020 - Class 7 Group 48
+BP 763/1020 already exported; skipping.
+Crafting BP 764/1020 - Class 7 Group 49
+BP 764/1020 already exported; skipping.
+Crafting BP 765/1020 - Class 7 Group 50
+BP 765/1020 already exported; skipping.
+Crafting BP 766/1020 - Class 7 Group 51
+BP 766/1020 already exported; skipping.
+Crafting BP 767/1020 - Class 7 Group 52
+BP 767/1020 already exported; skipping.
+Crafting BP 768/1020 - Class 7 Group 53
+BP 768/1020 already exported; skipping.
+Crafting BP 769/1020 - Class 7 Group 54
+BP 769/1020 already exported; skipping.
+Crafting BP 770/1020 - Class 7 Group 55
+BP 770/1020 already exported; skipping.
+Crafting BP 771/1020 - Class 7 Group 56
+BP 771/1020 already exported; skipping.
+Crafting BP 772/1020 - Class 7 Group 57
+BP 772/1020 already exported; skipping.
+Crafting BP 773/1020 - Class 7 Group 58
+BP 773/1020 already exported; skipping.
+Crafting BP 774/1020 - Class 7 Group 59
+BP 774/1020 already exported; skipping.
+Crafting BP 775/1020 - Class 7 Group 60
+BP 775/1020 already exported; skipping.
+Crafting BP 776/1020 - Class 7 Group 61
+BP 776/1020 already exported; skipping.
+Crafting BP 777/1020 - Class 7 Group 62
+BP 777/1020 already exported; skipping.
+Crafting BP 778/1020 - Class 7 Group 63
+BP 778/1020 already exported; skipping.
+Crafting BP 779/1020 - Class 7 Group 64
+BP 779/1020 already exported; skipping.
+Crafting BP 780/1020 - Class 7 Group 65
+BP 780/1020 already exported; skipping.
+Crafting BP 781/1020 - Class 7 Group 66
+BP 781/1020 already exported; skipping.
+Crafting BP 782/1020 - Class 7 Group 67
+BP 782/1020 already exported; skipping.
+Crafting BP 783/1020 - Class 7 Group 68
+BP 783/1020 already exported; skipping.
+Crafting BP 784/1020 - Class 7 Group 69
+BP 784/1020 already exported; skipping.
+Crafting BP 785/1020 - Class 7 Group 70
+BP 785/1020 already exported; skipping.
+Crafting BP 786/1020 - Class 7 Group 71
+BP 786/1020 already exported; skipping.
+Crafting BP 787/1020 - Class 7 Group 72
+BP 787/1020 already exported; skipping.
+Crafting BP 788/1020 - Class 7 Group 73
+BP 788/1020 already exported; skipping.
+Crafting BP 789/1020 - Class 7 Group 74
+BP 789/1020 already exported; skipping.
+Crafting BP 790/1020 - Class 7 Group 75
+BP 790/1020 already exported; skipping.
+Crafting BP 791/1020 - Class 7 Group 76
+BP 791/1020 already exported; skipping.
+Crafting BP 792/1020 - Class 7 Group 77
+BP 792/1020 already exported; skipping.
+Crafting BP 793/1020 - Class 7 Group 78
+BP 793/1020 already exported; skipping.
+Crafting BP 794/1020 - Class 7 Group 79
+BP 794/1020 already exported; skipping.
+Crafting BP 795/1020 - Class 7 Group 80
+BP 795/1020 already exported; skipping.
+Crafting BP 796/1020 - Class 7 Group 81
+BP 796/1020 already exported; skipping.
+Crafting BP 797/1020 - Class 7 Group 82
+BP 797/1020 already exported; skipping.
+Crafting BP 798/1020 - Class 7 Group 83
+BP 798/1020 already exported; skipping.
+Crafting BP 799/1020 - Class 7 Group 84
+BP 799/1020 already exported; skipping.
+Crafting BP 800/1020 - Class 7 Group 85
+BP 800/1020 already exported; skipping.
+Crafting BP 801/1020 - Class 7 Group 86
+BP 801/1020 already exported; skipping.
+Crafting BP 802/1020 - Class 7 Group 87
+BP 802/1020 already exported; skipping.
+Crafting BP 803/1020 - Class 7 Group 88
+BP 803/1020 already exported; skipping.
+Crafting BP 804/1020 - Class 7 Group 89
+BP 804/1020 already exported; skipping.
+Crafting BP 805/1020 - Class 7 Group 90
+BP 805/1020 already exported; skipping.
+Crafting BP 806/1020 - Class 7 Group 91
+BP 806/1020 already exported; skipping.
+Crafting BP 807/1020 - Class 7 Group 92
+BP 807/1020 already exported; skipping.
+Crafting BP 808/1020 - Class 7 Group 93
+BP 808/1020 already exported; skipping.
+Crafting BP 809/1020 - Class 7 Group 94
+BP 809/1020 already exported; skipping.
+Crafting BP 810/1020 - Class 7 Group 95
+BP 810/1020 already exported; skipping.
+Crafting BP 811/1020 - Class 7 Group 96
+BP 811/1020 already exported; skipping.
+Crafting BP 812/1020 - Class 7 Group 97
+BP 812/1020 already exported; skipping.
+Crafting BP 813/1020 - Class 7 Group 98
+BP 813/1020 already exported; skipping.
+Crafting BP 814/1020 - Class 7 Group 99
+BP 814/1020 already exported; skipping.
+Crafting BP 815/1020 - Class 7 Group 0
+BP 815/1020 already exported; skipping.
+Crafting BP 816/1020 - Class 7 Group 1
+BP 816/1020 already exported; skipping.
+Crafting BP 817/1020 - Class 8 Group 0
+BP 817/1020 already exported; skipping.
+Crafting BP 818/1020 - Class 8 Group 1
+BP 818/1020 already exported; skipping.
+Crafting BP 819/1020 - Class 8 Group 2
+BP 819/1020 already exported; skipping.
+Crafting BP 820/1020 - Class 8 Group 3
+BP 820/1020 already exported; skipping.
+Crafting BP 821/1020 - Class 8 Group 4
+BP 821/1020 already exported; skipping.
+Crafting BP 822/1020 - Class 8 Group 5
+BP 822/1020 already exported; skipping.
+Crafting BP 823/1020 - Class 8 Group 6
+BP 823/1020 already exported; skipping.
+Crafting BP 824/1020 - Class 8 Group 7
+BP 824/1020 already exported; skipping.
+Crafting BP 825/1020 - Class 8 Group 8
+BP 825/1020 already exported; skipping.
+Crafting BP 826/1020 - Class 8 Group 9
+BP 826/1020 already exported; skipping.
+Crafting BP 827/1020 - Class 8 Group 10
+BP 827/1020 already exported; skipping.
+Crafting BP 828/1020 - Class 8 Group 11
+BP 828/1020 already exported; skipping.
+Crafting BP 829/1020 - Class 8 Group 12
+BP 829/1020 already exported; skipping.
+Crafting BP 830/1020 - Class 8 Group 13
+BP 830/1020 already exported; skipping.
+Crafting BP 831/1020 - Class 8 Group 14
+BP 831/1020 already exported; skipping.
+Crafting BP 832/1020 - Class 8 Group 15
+BP 832/1020 already exported; skipping.
+Crafting BP 833/1020 - Class 8 Group 16
+BP 833/1020 already exported; skipping.
+Crafting BP 834/1020 - Class 8 Group 17
+BP 834/1020 already exported; skipping.
+Crafting BP 835/1020 - Class 8 Group 18
+BP 835/1020 already exported; skipping.
+Crafting BP 836/1020 - Class 8 Group 19
+BP 836/1020 already exported; skipping.
+Crafting BP 837/1020 - Class 8 Group 20
+BP 837/1020 already exported; skipping.
+Crafting BP 838/1020 - Class 8 Group 21
+BP 838/1020 already exported; skipping.
+Crafting BP 839/1020 - Class 8 Group 22
+BP 839/1020 already exported; skipping.
+Crafting BP 840/1020 - Class 8 Group 23
+BP 840/1020 already exported; skipping.
+Crafting BP 841/1020 - Class 8 Group 24
+BP 841/1020 already exported; skipping.
+Crafting BP 842/1020 - Class 8 Group 25
+BP 842/1020 already exported; skipping.
+Crafting BP 843/1020 - Class 8 Group 26
+BP 843/1020 already exported; skipping.
+Crafting BP 844/1020 - Class 8 Group 27
+BP 844/1020 already exported; skipping.
+Crafting BP 845/1020 - Class 8 Group 28
+BP 845/1020 already exported; skipping.
+Crafting BP 846/1020 - Class 8 Group 29
+BP 846/1020 already exported; skipping.
+Crafting BP 847/1020 - Class 8 Group 30
+BP 847/1020 already exported; skipping.
+Crafting BP 848/1020 - Class 8 Group 31
+BP 848/1020 already exported; skipping.
+Crafting BP 849/1020 - Class 8 Group 32
+BP 849/1020 already exported; skipping.
+Crafting BP 850/1020 - Class 8 Group 33
+BP 850/1020 already exported; skipping.
+Crafting BP 851/1020 - Class 8 Group 34
+BP 851/1020 already exported; skipping.
+Crafting BP 852/1020 - Class 8 Group 35
+BP 852/1020 already exported; skipping.
+Crafting BP 853/1020 - Class 8 Group 36
+BP 853/1020 already exported; skipping.
+Crafting BP 854/1020 - Class 8 Group 37
+BP 854/1020 already exported; skipping.
+Crafting BP 855/1020 - Class 8 Group 38
+BP 855/1020 already exported; skipping.
+Crafting BP 856/1020 - Class 8 Group 39
+BP 856/1020 already exported; skipping.
+Crafting BP 857/1020 - Class 8 Group 40
+BP 857/1020 already exported; skipping.
+Crafting BP 858/1020 - Class 8 Group 41
+BP 858/1020 already exported; skipping.
+Crafting BP 859/1020 - Class 8 Group 42
+BP 859/1020 already exported; skipping.
+Crafting BP 860/1020 - Class 8 Group 43
+BP 860/1020 already exported; skipping.
+Crafting BP 861/1020 - Class 8 Group 44
+BP 861/1020 already exported; skipping.
+Crafting BP 862/1020 - Class 8 Group 45
+BP 862/1020 already exported; skipping.
+Crafting BP 863/1020 - Class 8 Group 46
+BP 863/1020 already exported; skipping.
+Crafting BP 864/1020 - Class 8 Group 47
+BP 864/1020 already exported; skipping.
+Crafting BP 865/1020 - Class 8 Group 48
+BP 865/1020 already exported; skipping.
+Crafting BP 866/1020 - Class 8 Group 49
+BP 866/1020 already exported; skipping.
+Crafting BP 867/1020 - Class 8 Group 50
+BP 867/1020 already exported; skipping.
+Crafting BP 868/1020 - Class 8 Group 51
+BP 868/1020 already exported; skipping.
+Crafting BP 869/1020 - Class 8 Group 52
+BP 869/1020 already exported; skipping.
+Crafting BP 870/1020 - Class 8 Group 53
+BP 870/1020 already exported; skipping.
+Crafting BP 871/1020 - Class 8 Group 54
+BP 871/1020 already exported; skipping.
+Crafting BP 872/1020 - Class 8 Group 55
+BP 872/1020 already exported; skipping.
+Crafting BP 873/1020 - Class 8 Group 56
+BP 873/1020 already exported; skipping.
+Crafting BP 874/1020 - Class 8 Group 57
+BP 874/1020 already exported; skipping.
+Crafting BP 875/1020 - Class 8 Group 58
+BP 875/1020 already exported; skipping.
+Crafting BP 876/1020 - Class 8 Group 59
+BP 876/1020 already exported; skipping.
+Crafting BP 877/1020 - Class 8 Group 60
+BP 877/1020 already exported; skipping.
+Crafting BP 878/1020 - Class 8 Group 61
+BP 878/1020 already exported; skipping.
+Crafting BP 879/1020 - Class 8 Group 62
+BP 879/1020 already exported; skipping.
+Crafting BP 880/1020 - Class 8 Group 63
+BP 880/1020 already exported; skipping.
+Crafting BP 881/1020 - Class 8 Group 64
+BP 881/1020 already exported; skipping.
+Crafting BP 882/1020 - Class 8 Group 65
+BP 882/1020 already exported; skipping.
+Crafting BP 883/1020 - Class 8 Group 66
+BP 883/1020 already exported; skipping.
+Crafting BP 884/1020 - Class 8 Group 67
+BP 884/1020 already exported; skipping.
+Crafting BP 885/1020 - Class 8 Group 68
+BP 885/1020 already exported; skipping.
+Crafting BP 886/1020 - Class 8 Group 69
+BP 886/1020 already exported; skipping.
+Crafting BP 887/1020 - Class 8 Group 70
+BP 887/1020 already exported; skipping.
+Crafting BP 888/1020 - Class 8 Group 71
+BP 888/1020 already exported; skipping.
+Crafting BP 889/1020 - Class 8 Group 72
+BP 889/1020 already exported; skipping.
+Crafting BP 890/1020 - Class 8 Group 73
+BP 890/1020 already exported; skipping.
+Crafting BP 891/1020 - Class 8 Group 74
+BP 891/1020 already exported; skipping.
+Crafting BP 892/1020 - Class 8 Group 75
+BP 892/1020 already exported; skipping.
+Crafting BP 893/1020 - Class 8 Group 76
+BP 893/1020 already exported; skipping.
+Crafting BP 894/1020 - Class 8 Group 77
+BP 894/1020 already exported; skipping.
+Crafting BP 895/1020 - Class 8 Group 78
+BP 895/1020 already exported; skipping.
+Crafting BP 896/1020 - Class 8 Group 79
+BP 896/1020 already exported; skipping.
+Crafting BP 897/1020 - Class 8 Group 80
+BP 897/1020 already exported; skipping.
+Crafting BP 898/1020 - Class 8 Group 81
+BP 898/1020 already exported; skipping.
+Crafting BP 899/1020 - Class 8 Group 82
+BP 899/1020 already exported; skipping.
+Crafting BP 900/1020 - Class 8 Group 83
+BP 900/1020 already exported; skipping.
+Crafting BP 901/1020 - Class 8 Group 84
+BP 901/1020 already exported; skipping.
+Crafting BP 902/1020 - Class 8 Group 85
+BP 902/1020 already exported; skipping.
+Crafting BP 903/1020 - Class 8 Group 86
+BP 903/1020 already exported; skipping.
+Crafting BP 904/1020 - Class 8 Group 87
+BP 904/1020 already exported; skipping.
+Crafting BP 905/1020 - Class 8 Group 88
+BP 905/1020 already exported; skipping.
+Crafting BP 906/1020 - Class 8 Group 89
+BP 906/1020 already exported; skipping.
+Crafting BP 907/1020 - Class 8 Group 90
+BP 907/1020 already exported; skipping.
+Crafting BP 908/1020 - Class 8 Group 91
+BP 908/1020 already exported; skipping.
+Crafting BP 909/1020 - Class 8 Group 92
+BP 909/1020 already exported; skipping.
+Crafting BP 910/1020 - Class 8 Group 93
+BP 910/1020 already exported; skipping.
+Crafting BP 911/1020 - Class 8 Group 94
+BP 911/1020 already exported; skipping.
+Crafting BP 912/1020 - Class 8 Group 95
+BP 912/1020 already exported; skipping.
+Crafting BP 913/1020 - Class 8 Group 96
+BP 913/1020 already exported; skipping.
+Crafting BP 914/1020 - Class 8 Group 97
+BP 914/1020 already exported; skipping.
+Crafting BP 915/1020 - Class 8 Group 98
+BP 915/1020 already exported; skipping.
+Crafting BP 916/1020 - Class 8 Group 99
+BP 916/1020 already exported; skipping.
+Crafting BP 917/1020 - Class 8 Group 0
+BP 917/1020 already exported; skipping.
+Crafting BP 918/1020 - Class 8 Group 1
+BP 918/1020 already exported; skipping.
+Crafting BP 919/1020 - Class 9 Group 0
+BP 919/1020 already exported; skipping.
+Crafting BP 920/1020 - Class 9 Group 1
+BP 920/1020 already exported; skipping.
+Crafting BP 921/1020 - Class 9 Group 2
+BP 921/1020 already exported; skipping.
+Crafting BP 922/1020 - Class 9 Group 3
+BP 922/1020 already exported; skipping.
+Crafting BP 923/1020 - Class 9 Group 4
+BP 923/1020 already exported; skipping.
+Crafting BP 924/1020 - Class 9 Group 5
+BP 924/1020 already exported; skipping.
+Crafting BP 925/1020 - Class 9 Group 6
+BP 925/1020 already exported; skipping.
+Crafting BP 926/1020 - Class 9 Group 7
+BP 926/1020 already exported; skipping.
+Crafting BP 927/1020 - Class 9 Group 8
+BP 927/1020 already exported; skipping.
+Crafting BP 928/1020 - Class 9 Group 9
+BP 928/1020 already exported; skipping.
+Crafting BP 929/1020 - Class 9 Group 10
+BP 929/1020 already exported; skipping.
+Crafting BP 930/1020 - Class 9 Group 11
+BP 930/1020 already exported; skipping.
+Crafting BP 931/1020 - Class 9 Group 12
+BP 931/1020 already exported; skipping.
+Crafting BP 932/1020 - Class 9 Group 13
+BP 932/1020 already exported; skipping.
+Crafting BP 933/1020 - Class 9 Group 14
+BP 933/1020 already exported; skipping.
+Crafting BP 934/1020 - Class 9 Group 15
+BP 934/1020 already exported; skipping.
+Crafting BP 935/1020 - Class 9 Group 16
+BP 935/1020 already exported; skipping.
+Crafting BP 936/1020 - Class 9 Group 17
+BP 936/1020 already exported; skipping.
+Crafting BP 937/1020 - Class 9 Group 18
+BP 937/1020 already exported; skipping.
+Crafting BP 938/1020 - Class 9 Group 19
+BP 938/1020 already exported; skipping.
+Crafting BP 939/1020 - Class 9 Group 20
+BP 939/1020 already exported; skipping.
+Crafting BP 940/1020 - Class 9 Group 21
+BP 940/1020 already exported; skipping.
+Crafting BP 941/1020 - Class 9 Group 22
+BP 941/1020 already exported; skipping.
+Crafting BP 942/1020 - Class 9 Group 23
+BP 942/1020 already exported; skipping.
+Crafting BP 943/1020 - Class 9 Group 24
+BP 943/1020 already exported; skipping.
+Crafting BP 944/1020 - Class 9 Group 25
+BP 944/1020 already exported; skipping.
+Crafting BP 945/1020 - Class 9 Group 26
+BP 945/1020 already exported; skipping.
+Crafting BP 946/1020 - Class 9 Group 27
+BP 946/1020 already exported; skipping.
+Crafting BP 947/1020 - Class 9 Group 28
+BP 947/1020 already exported; skipping.
+Crafting BP 948/1020 - Class 9 Group 29
+BP 948/1020 already exported; skipping.
+Crafting BP 949/1020 - Class 9 Group 30
+BP 949/1020 already exported; skipping.
+Crafting BP 950/1020 - Class 9 Group 31
+BP 950/1020 already exported; skipping.
+Crafting BP 951/1020 - Class 9 Group 32
+BP 951/1020 already exported; skipping.
+Crafting BP 952/1020 - Class 9 Group 33
+BP 952/1020 already exported; skipping.
+Crafting BP 953/1020 - Class 9 Group 34
+BP 953/1020 already exported; skipping.
+Crafting BP 954/1020 - Class 9 Group 35
+BP 954/1020 already exported; skipping.
+Crafting BP 955/1020 - Class 9 Group 36
+BP 955/1020 already exported; skipping.
+Crafting BP 956/1020 - Class 9 Group 37
+BP 956/1020 already exported; skipping.
+Crafting BP 957/1020 - Class 9 Group 38
+BP 957/1020 already exported; skipping.
+Crafting BP 958/1020 - Class 9 Group 39
+BP 958/1020 already exported; skipping.
+Crafting BP 959/1020 - Class 9 Group 40
+BP 959/1020 already exported; skipping.
+Crafting BP 960/1020 - Class 9 Group 41
+BP 960/1020 already exported; skipping.
+Crafting BP 961/1020 - Class 9 Group 42
+BP 961/1020 already exported; skipping.
+Crafting BP 962/1020 - Class 9 Group 43
+BP 962/1020 already exported; skipping.
+Crafting BP 963/1020 - Class 9 Group 44
+BP 963/1020 already exported; skipping.
+Crafting BP 964/1020 - Class 9 Group 45
+BP 964/1020 already exported; skipping.
+Crafting BP 965/1020 - Class 9 Group 46
+BP 965/1020 already exported; skipping.
+Crafting BP 966/1020 - Class 9 Group 47
+BP 966/1020 already exported; skipping.
+Crafting BP 967/1020 - Class 9 Group 48
+BP 967/1020 already exported; skipping.
+Crafting BP 968/1020 - Class 9 Group 49
+BP 968/1020 already exported; skipping.
+Crafting BP 969/1020 - Class 9 Group 50
+BP 969/1020 already exported; skipping.
+Crafting BP 970/1020 - Class 9 Group 51
+BP 970/1020 already exported; skipping.
+Crafting BP 971/1020 - Class 9 Group 52
+BP 971/1020 already exported; skipping.
+Crafting BP 972/1020 - Class 9 Group 53
+BP 972/1020 already exported; skipping.
+Crafting BP 973/1020 - Class 9 Group 54
+BP 973/1020 already exported; skipping.
+Crafting BP 974/1020 - Class 9 Group 55
+BP 974/1020 already exported; skipping.
+Crafting BP 975/1020 - Class 9 Group 56
+BP 975/1020 already exported; skipping.
+Crafting BP 976/1020 - Class 9 Group 57
+BP 976/1020 already exported; skipping.
+Crafting BP 977/1020 - Class 9 Group 58
+BP 977/1020 already exported; skipping.
+Crafting BP 978/1020 - Class 9 Group 59
+BP 978/1020 already exported; skipping.
+Crafting BP 979/1020 - Class 9 Group 60
+BP 979/1020 already exported; skipping.
+Crafting BP 980/1020 - Class 9 Group 61
+BP 980/1020 already exported; skipping.
+Crafting BP 981/1020 - Class 9 Group 62
+BP 981/1020 already exported; skipping.
+Crafting BP 982/1020 - Class 9 Group 63
+BP 982/1020 already exported; skipping.
+Crafting BP 983/1020 - Class 9 Group 64
+BP 983/1020 already exported; skipping.
+Crafting BP 984/1020 - Class 9 Group 65
+BP 984/1020 already exported; skipping.
+Crafting BP 985/1020 - Class 9 Group 66
+BP 985/1020 already exported; skipping.
+Crafting BP 986/1020 - Class 9 Group 67
+BP 986/1020 already exported; skipping.
+Crafting BP 987/1020 - Class 9 Group 68
+BP 987/1020 already exported; skipping.
+Crafting BP 988/1020 - Class 9 Group 69
+BP 988/1020 already exported; skipping.
+Crafting BP 989/1020 - Class 9 Group 70
+BP 989/1020 already exported; skipping.
+Crafting BP 990/1020 - Class 9 Group 71
+BP 990/1020 already exported; skipping.
+Crafting BP 991/1020 - Class 9 Group 72
+BP 991/1020 already exported; skipping.
+Crafting BP 992/1020 - Class 9 Group 73
+BP 992/1020 already exported; skipping.
+Crafting BP 993/1020 - Class 9 Group 74
+BP 993/1020 already exported; skipping.
+Crafting BP 994/1020 - Class 9 Group 75
+BP 994/1020 already exported; skipping.
+Crafting BP 995/1020 - Class 9 Group 76
+BP 995/1020 already exported; skipping.
+Crafting BP 996/1020 - Class 9 Group 77
+BP 996/1020 already exported; skipping.
+Crafting BP 997/1020 - Class 9 Group 78
+BP 997/1020 already exported; skipping.
+Crafting BP 998/1020 - Class 9 Group 79
+BP 998/1020 already exported; skipping.
+Crafting BP 999/1020 - Class 9 Group 80
+BP 999/1020 already exported; skipping.
+Crafting BP 1000/1020 - Class 9 Group 81
+BP 1000/1020 already exported; skipping.
+Crafting BP 1001/1020 - Class 9 Group 82
+BP 1001/1020 already exported; skipping.
+Crafting BP 1002/1020 - Class 9 Group 83
+BP 1002/1020 already exported; skipping.
+Crafting BP 1003/1020 - Class 9 Group 84
+BP 1003/1020 already exported; skipping.
+Crafting BP 1004/1020 - Class 9 Group 85
+BP 1004/1020 already exported; skipping.
+Crafting BP 1005/1020 - Class 9 Group 86
+BP 1005/1020 already exported; skipping.
+Crafting BP 1006/1020 - Class 9 Group 87
+BP 1006/1020 already exported; skipping.
+Crafting BP 1007/1020 - Class 9 Group 88
+BP 1007/1020 already exported; skipping.
+Crafting BP 1008/1020 - Class 9 Group 89
+BP 1008/1020 already exported; skipping.
+Crafting BP 1009/1020 - Class 9 Group 90
+BP 1009/1020 already exported; skipping.
+Crafting BP 1010/1020 - Class 9 Group 91
+BP 1010/1020 already exported; skipping.
+Crafting BP 1011/1020 - Class 9 Group 92
+BP 1011/1020 already exported; skipping.
+Crafting BP 1012/1020 - Class 9 Group 93
+BP 1012/1020 already exported; skipping.
+Crafting BP 1013/1020 - Class 9 Group 94
+BP 1013/1020 already exported; skipping.
+Crafting BP 1014/1020 - Class 9 Group 95
+BP 1014/1020 already exported; skipping.
+Crafting BP 1015/1020 - Class 9 Group 96
+BP 1015/1020 already exported; skipping.
+Crafting BP 1016/1020 - Class 9 Group 97
+BP 1016/1020 already exported; skipping.
+Crafting BP 1017/1020 - Class 9 Group 98
+BP 1017/1020 already exported; skipping.
+Crafting BP 1018/1020 - Class 9 Group 99
+BP 1018/1020 already exported; skipping.
+Crafting BP 1019/1020 - Class 9 Group 0
+BP 1019/1020 already exported; skipping.
+Crafting BP 1020/1020 - Class 9 Group 1
+BP 1020/1020 already exported; skipping.
+==============================
+DONE! Results are in /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/datasets/
+Finished at: 2026-06-23T03:45:39+07:00
+==============================
