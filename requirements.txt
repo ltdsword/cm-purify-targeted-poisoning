@@ -1,5 +1,5 @@
 # Data handling and arrays
-numpy
+numpy<2
 huggingface_hub
 
 # Miscellaneous Utilities
@@ -16,6 +16,7 @@ Pillow
 diffusers
 transformers
 accelerate
+safetensors
 
 # Utils
 # In case the framework accesses datasets directly
