@@ -6,7 +6,6 @@
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
 #SBATCH --time=01:00:00
-#SBATCH --exclude=gpu03
 
 set -euo pipefail
 
@@ -106,4 +105,3 @@ echo "=============================="
 echo "DONE! Smoke outputs are in ${SMOKE_OUTPUT_DIR}"
 echo "Finished at: $(date -Is)"
 echo "=============================="
-

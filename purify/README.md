@@ -151,12 +151,24 @@ sbatch purify/run_purify_test.sh
 Main files:
 
 ```text
+purifier.py          reusable f(image) -> purified image module
 dataset.py           discovers held-out cases and builds per-image records
 purify_test.py       Algorithm 3 loop, logging, batching, saving, summary JSON
 run_purify_test.sh   Slurm runner, env setup, checkpoint check, dependency submit
 ```
 
-`purify_test.py` uses helpers from `consistency_model/cm_purifier`:
+`purifier.py` is the callable interface used by both the dataset purifier and
+the benchmark:
+
+```python
+from PIL import Image
+from purify import CMPurifier
+
+purifier = CMPurifier.from_checkpoint("consistency_model/checkpoints/cm_purifier.pth")
+purified = purifier.purify_image(Image.open("untrusted.png"))
+```
+
+`purifier.py` uses helpers from `consistency_model/cm_purifier`:
 
 ```text
 load_purifier_from_checkpoint   rebuilds the model and loads EMA weights

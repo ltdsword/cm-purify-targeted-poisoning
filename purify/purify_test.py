@@ -13,12 +13,11 @@ from typing import Dict, List
 
 import torch
 
-from consistency_model.cm_purifier.checkpoint import load_purifier_from_checkpoint
 from consistency_model.cm_purifier.dataset import load_image_tensor
-from consistency_model.cm_purifier.infer import resolve_t_star, save_image_tensor
-from consistency_model.cm_purifier.schedules import minus_one_to_one_to_zero_one, q_sample
+from consistency_model.cm_purifier.infer import save_image_tensor
 
 from .dataset import TestCase, build_purify_records, discover_test_cases, summarize_cases
+from .purifier import CMPurifier
 
 
 LOGGER = logging.getLogger("purify.algorithm3")
@@ -147,19 +146,6 @@ def copy_reference_dirs(cases: List[TestCase], output_root: Path) -> None:
             shutil.copytree(source_dir, destination)
 
 
-# Purpose: Purify one tensor batch using Algorithm 3.
-# Input: model, batch tensor, t-star, schedules, and device.
-# Output: purified image tensor batch in [0, 1].
-def purify_batch(model, batch, t_star: int, alpha_schedule, sigma_schedule, device: torch.device):
-    batch = batch.to(device)
-    timesteps = torch.full((batch.shape[0],), t_star, dtype=torch.long, device=device)
-    noise = torch.randn(batch.shape, dtype=batch.dtype, device=device)
-    x_t = q_sample(batch, timesteps, noise, alpha_schedule, sigma_schedule)
-    with torch.no_grad():
-        purified = model(x_t, timesteps, alpha_schedule, sigma_schedule)
-    return minus_one_to_one_to_zero_one(purified)
-
-
 # Purpose: Write a JSON summary file for the purification run.
 # Input: output root and summary dictionary.
 # Output: path to the written summary file.
@@ -217,13 +203,15 @@ def main(args=None):
     LOGGER.info("t_star: %s | batch size: %d | seed: %d", args.t_star, args.batch_size, args.seed)
 
     log_section("2. LOADING TRAINED CM PURIFIER...")
-    model, alpha_schedule, sigma_schedule, train_args = load_purifier_from_checkpoint(
+    purifier = CMPurifier.from_checkpoint(
         checkpoint_path,
+        t_star=args.t_star,
         device=device,
+        seed=args.seed,
         use_student=args.use_student,
     )
-    image_size = int(train_args.get("image_size", 32))
-    t_star = resolve_t_star(args.t_star, len(alpha_schedule))
+    image_size = purifier.image_size
+    t_star = purifier.t_star
     LOGGER.info("Resolved device: %s", device)
     LOGGER.info("Resolved integer t_star: %d", t_star)
     LOGGER.info("Checkpoint training args image_size: %d", image_size)
@@ -243,7 +231,7 @@ def main(args=None):
             [load_image_tensor(record.source_path, image_size=image_size) for record in batch_records],
             dim=0,
         )
-        purified = purify_batch(model, batch, t_star, alpha_schedule, sigma_schedule, device)
+        purified = purifier.purify_tensor(batch, input_range="minus_one_to_one", output_range="zero_to_one")
         for tensor, record in zip(purified, batch_records):
             save_image_tensor(tensor, output_root / record.relative_output_path)
 

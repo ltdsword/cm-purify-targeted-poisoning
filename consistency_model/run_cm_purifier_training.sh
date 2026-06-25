@@ -6,7 +6,6 @@
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:1
 #SBATCH --time=48:00:00
-#SBATCH --exclude=gpu03
 
 set -euo pipefail
 
@@ -40,6 +39,7 @@ CONSISTENCY_DIR="${REPO_DIR}/consistency_model"
 PAIR_DIR="${PAIR_DIR:-${REPO_DIR}/dataset_generation/datasets/train}"
 OUTPUT_PATH="${OUTPUT_PATH:-${CONSISTENCY_DIR}/checkpoints/cm_purifier.pth}"
 TEACHER_MODEL="${TEACHER_MODEL:-google/ddpm-cifar10-32}"
+CM_OUTPUT_MODE="${CM_OUTPUT_MODE:-full_boundary}"
 ENV_NAME="${ENV_NAME:-purifying_poison}"
 ROOT_REQUIREMENTS="${ROOT_REQUIREMENTS:-${REPO_DIR}/requirements.txt}"
 LOG_DIR="${CONSISTENCY_DIR}/logs"
@@ -56,6 +56,7 @@ echo "Working directory: $(pwd)"
 echo "Repository: ${REPO_DIR}"
 echo "Pair directory: ${PAIR_DIR}"
 echo "Output checkpoint: ${OUTPUT_PATH}"
+echo "CM output mode: ${CM_OUTPUT_MODE}"
 echo "Conda environment: ${ENV_NAME}"
 echo "Root requirements: ${ROOT_REQUIREMENTS}"
 echo "Logs directory: ${LOG_DIR}"
@@ -141,6 +142,7 @@ echo "=============================="
     --pair-dir "${PAIR_DIR}" \
     --teacher-model "${TEACHER_MODEL}" \
     --backbone diffusers \
+    --cm-output-mode "${CM_OUTPUT_MODE}" \
     --schedule-source diffusers \
     --out "${OUTPUT_PATH}" \
     --device cuda \

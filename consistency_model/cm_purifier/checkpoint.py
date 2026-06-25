@@ -97,11 +97,10 @@ def load_purifier_from_checkpoint(
         backbone=train_args.get("backbone", "diffusers"),
         model_name_or_path=train_args.get("teacher_model", "google/ddpm-cifar10-32"),
         tiny_hidden_channels=int(train_args.get("tiny_hidden_channels", 64)),
-        output_mode=train_args.get("cm_output_mode", "pred_x0"),
+        output_mode=train_args.get("cm_output_mode", "full_boundary"),
     ).to(device)
     state_key = "model" if use_student or "ema" not in checkpoint else "ema"
     model.load_state_dict(checkpoint[state_key])
     model.eval()
     alpha_schedule, sigma_schedule = build_schedules_from_checkpoint(checkpoint, train_args, device)
     return model, alpha_schedule, sigma_schedule, train_args
-

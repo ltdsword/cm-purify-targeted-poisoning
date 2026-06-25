@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=cm_purify_test
+#SBATCH --job-name=cm_benchmark
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --gres=gpu:1
 #SBATCH --time=48:00:00
 
@@ -18,7 +18,7 @@ find_repo_dir() {
     dir="$(cd "${start_dir}" && pwd)"
 
     while [[ "${dir}" != "/" ]]; do
-        if [[ -f "${dir}/requirements.txt" && -f "${dir}/purify/purify_test.py" ]]; then
+        if [[ -f "${dir}/requirements.txt" && -f "${dir}/benchmark/run_benchmark.py" ]]; then
             echo "${dir}"
             return 0
         fi
@@ -28,10 +28,10 @@ find_repo_dir() {
     return 1
 }
 
-# Purpose: Submit CM training and then submit this purification runner as a dependent Slurm job.
+# Purpose: Submit CM training and then submit this benchmark runner as a dependent Slurm job.
 # Input: training runner path and this runner path.
-# Output: Slurm jobs are submitted; the current job exits before purification begins.
-submit_training_then_purify() {
+# Output: Slurm jobs are submitted; current job exits before benchmark begins.
+submit_training_then_benchmark() {
     local train_script="$1"
     local self_script="$2"
 
@@ -56,12 +56,12 @@ submit_training_then_purify() {
         exit 1
     fi
 
-    echo "Submitting this purification job after training job ${train_job_id} succeeds."
+    echo "Submitting benchmark after training job ${train_job_id} succeeds."
     sbatch \
         --dependency=afterok:"${train_job_id}" \
-        --export=ALL,TEST_DIR="${TEST_DIR}",OUTPUT_DIR="${OUTPUT_DIR}",CHECKPOINT_PATH="${CHECKPOINT_PATH}",ENV_NAME="${ENV_NAME}",ROOT_REQUIREMENTS="${ROOT_REQUIREMENTS}",T_STAR="${T_STAR}",BATCH_SIZE="${BATCH_SIZE}",SEED="${SEED}",LOG_STEPS="${LOG_STEPS}",MAX_IMAGES="${MAX_IMAGES}",COPY_REFERENCE_DIRS="${COPY_REFERENCE_DIRS}" \
+        --export=ALL,CHECKPOINT_PATH="${CHECKPOINT_PATH}",TEST_DIR="${TEST_DIR}",OUTPUT_DIR="${OUTPUT_DIR}",RUN_ID="${RUN_ID}",ENV_NAME="${ENV_NAME}",ROOT_REQUIREMENTS="${ROOT_REQUIREMENTS}",ATTACK_FILTER="${ATTACK_FILTER}",CASE_FILTER="${CASE_FILTER}",MAX_CASES="${MAX_CASES}",T_STAR="${T_STAR}",BATCH_SIZE="${BATCH_SIZE}",SEED="${SEED}",LOG_STEPS="${LOG_STEPS}",SKIP_PURIFY="${SKIP_PURIFY}",SKIP_RETRAIN="${SKIP_RETRAIN}",OVERWRITE_ARTIFACTS="${OVERWRITE_ARTIFACTS}",WB_EPOCHS="${WB_EPOCHS}",WB_DRYRUN="${WB_DRYRUN}",BP_VICTIM_NET="${BP_VICTIM_NET}",BP_CHECKPOINT_NAME="${BP_CHECKPOINT_NAME}",BP_RETRAIN_EPOCHS="${BP_RETRAIN_EPOCHS}",BP_RETRAIN_BSIZE="${BP_RETRAIN_BSIZE}" \
         "${self_script}"
-    echo "Exiting current purification job; dependent purification job will run after training."
+    echo "Exiting current benchmark job; dependent benchmark job will run after training."
     exit 0
 }
 
@@ -72,25 +72,36 @@ else
     REPO_DIR="$(find_repo_dir "${RUNNER_DIR}")"
 fi
 
-PURIFY_DIR="${REPO_DIR}/purify"
+BENCHMARK_DIR="${REPO_DIR}/benchmark"
 CONSISTENCY_DIR="${REPO_DIR}/consistency_model"
 TRAIN_SCRIPT="${CONSISTENCY_DIR}/run_cm_purifier_training.sh"
-SELF_SCRIPT="${PURIFY_DIR}/run_purify_test.sh"
-TEST_DIR="${TEST_DIR:-${REPO_DIR}/dataset_generation/datasets/test}"
-OUTPUT_DIR="${OUTPUT_DIR:-${PURIFY_DIR}/outputs/test_purified}"
+SELF_SCRIPT="${BENCHMARK_DIR}/run_benchmark.sh"
 CHECKPOINT_PATH="${CHECKPOINT_PATH:-${CONSISTENCY_DIR}/checkpoints/cm_purifier.pth}"
+TEST_DIR="${TEST_DIR:-${REPO_DIR}/dataset_generation/datasets/test}"
+OUTPUT_DIR="${OUTPUT_DIR:-${BENCHMARK_DIR}/outputs}"
+RUN_ID="${RUN_ID:-}"
 ENV_NAME="${ENV_NAME:-purifying_poison}"
 ROOT_REQUIREMENTS="${ROOT_REQUIREMENTS:-${REPO_DIR}/requirements.txt}"
+ATTACK_FILTER="${ATTACK_FILTER:-all}"
+CASE_FILTER="${CASE_FILTER:-}"
+MAX_CASES="${MAX_CASES:-}"
 T_STAR="${T_STAR:-200}"
-BATCH_SIZE="${BATCH_SIZE:-256}"
+BATCH_SIZE="${BATCH_SIZE:-64}"
 SEED="${SEED:-2026}"
-LOG_STEPS="${LOG_STEPS:-256}"
-MAX_IMAGES="${MAX_IMAGES:-}"
-COPY_REFERENCE_DIRS="${COPY_REFERENCE_DIRS:-1}"
-LOG_DIR="${PURIFY_DIR}/logs"
+LOG_STEPS="${LOG_STEPS:-1024}"
+SKIP_PURIFY="${SKIP_PURIFY:-0}"
+SKIP_RETRAIN="${SKIP_RETRAIN:-0}"
+OVERWRITE_ARTIFACTS="${OVERWRITE_ARTIFACTS:-0}"
+WB_EPOCHS="${WB_EPOCHS:-}"
+WB_DRYRUN="${WB_DRYRUN:-0}"
+BP_VICTIM_NET="${BP_VICTIM_NET:-ResNet18}"
+BP_CHECKPOINT_NAME="${BP_CHECKPOINT_NAME:-ckpt-%s-4800.t7}"
+BP_RETRAIN_EPOCHS="${BP_RETRAIN_EPOCHS:-60}"
+BP_RETRAIN_BSIZE="${BP_RETRAIN_BSIZE:-64}"
+LOG_DIR="${BENCHMARK_DIR}/logs"
 JOB_ID="${SLURM_JOB_ID:-local_$(date +%Y%m%d_%H%M%S)_$$}"
-MAIN_LOG="${LOG_DIR}/purify_test_${JOB_ID}.log"
-ERR_LOG="${LOG_DIR}/purify_test_err_${JOB_ID}.log"
+MAIN_LOG="${LOG_DIR}/benchmark_${JOB_ID}.log"
+ERR_LOG="${LOG_DIR}/benchmark_err_${JOB_ID}.log"
 
 mkdir -p "${LOG_DIR}" "${OUTPUT_DIR}"
 exec > >(tee -a "${MAIN_LOG}") 2> >(tee -a "${ERR_LOG}" >&2)
@@ -102,6 +113,7 @@ echo "Repository: ${REPO_DIR}"
 echo "Checkpoint: ${CHECKPOINT_PATH}"
 echo "Test directory: ${TEST_DIR}"
 echo "Output directory: ${OUTPUT_DIR}"
+echo "Run ID: ${RUN_ID:-<auto>}"
 echo "Conda environment: ${ENV_NAME}"
 echo "Root requirements: ${ROOT_REQUIREMENTS}"
 echo "Logs directory: ${LOG_DIR}"
@@ -112,8 +124,8 @@ echo "SLURM job GPUs: ${SLURM_JOB_GPUS:-<unset>}"
 echo "SLURM step GPUs: ${SLURM_STEP_GPUS:-<unset>}"
 echo "CUDA_VISIBLE_DEVICES before setup: ${CUDA_VISIBLE_DEVICES:-<unset>}"
 
-if [[ ! -f "${CHECKPOINT_PATH}" ]]; then
-    submit_training_then_purify "${TRAIN_SCRIPT}" "${SELF_SCRIPT}"
+if [[ ! -f "${CHECKPOINT_PATH}" && "${SKIP_PURIFY}" != "1" ]]; then
+    submit_training_then_benchmark "${TRAIN_SCRIPT}" "${SELF_SCRIPT}"
 fi
 
 if command -v nvidia-smi >/dev/null 2>&1; then
@@ -173,43 +185,65 @@ print(f"PyTorch: {torch.__version__}")
 print(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES', '<unset>')}")
 print(f"CUDA available: {torch.cuda.is_available()}")
 if not torch.cuda.is_available():
-    sys.exit("ERROR: PyTorch cannot access CUDA; refusing to purify on CPU.")
+    sys.exit("ERROR: PyTorch cannot access CUDA; refusing to run benchmark on CPU.")
 print(f"CUDA device: {torch.cuda.get_device_name(0)}")
 try:
     tensor = torch.zeros((1,), device="cuda")
     torch.cuda.synchronize()
 except RuntimeError as exc:
-    sys.exit(f"ERROR: CUDA allocation test failed before purification: {exc}")
+    sys.exit(f"ERROR: CUDA allocation test failed before benchmark: {exc}")
 PY
 
 cd "${REPO_DIR}"
 
-PURIFY_ARGS=(
-    -u -m purify.purify_test
+BENCHMARK_ARGS=(
+    -u -m benchmark.run_benchmark
     --checkpoint "${CHECKPOINT_PATH}"
-    --input "${TEST_DIR}"
-    --output "${OUTPUT_DIR}"
+    --test-dir "${TEST_DIR}"
+    --output-dir "${OUTPUT_DIR}"
+    --attack-filter "${ATTACK_FILTER}"
     --t-star "${T_STAR}"
     --batch-size "${BATCH_SIZE}"
     --device cuda
     --seed "${SEED}"
     --log-steps "${LOG_STEPS}"
+    --bp-victim-net "${BP_VICTIM_NET}"
+    --bp-checkpoint-name "${BP_CHECKPOINT_NAME}"
+    --bp-retrain-epochs "${BP_RETRAIN_EPOCHS}"
+    --bp-retrain-bsize "${BP_RETRAIN_BSIZE}"
 )
 
-if [[ -n "${MAX_IMAGES}" ]]; then
-    PURIFY_ARGS+=(--max-images "${MAX_IMAGES}")
+if [[ -n "${RUN_ID}" ]]; then
+    BENCHMARK_ARGS+=(--run-id "${RUN_ID}")
+fi
+if [[ -n "${CASE_FILTER}" ]]; then
+    BENCHMARK_ARGS+=(--case-filter "${CASE_FILTER}")
+fi
+if [[ -n "${MAX_CASES}" ]]; then
+    BENCHMARK_ARGS+=(--max-cases "${MAX_CASES}")
+fi
+if [[ "${SKIP_PURIFY}" == "1" ]]; then
+    BENCHMARK_ARGS+=(--skip-purify)
+fi
+if [[ "${SKIP_RETRAIN}" == "1" ]]; then
+    BENCHMARK_ARGS+=(--skip-retrain)
+fi
+if [[ "${OVERWRITE_ARTIFACTS}" == "1" ]]; then
+    BENCHMARK_ARGS+=(--overwrite-artifacts)
+fi
+if [[ -n "${WB_EPOCHS}" ]]; then
+    BENCHMARK_ARGS+=(--wb-epochs "${WB_EPOCHS}")
+fi
+if [[ "${WB_DRYRUN}" == "1" ]]; then
+    BENCHMARK_ARGS+=(--wb-dryrun)
 fi
 
-if [[ "${COPY_REFERENCE_DIRS}" == "1" ]]; then
-    PURIFY_ARGS+=(--copy-reference-dirs)
-fi
+echo "=============================="
+echo "RUNNING CM PURIFICATION BENCHMARK..."
+echo "=============================="
+"${ENV_PYTHON}" "${BENCHMARK_ARGS[@]}"
 
 echo "=============================="
-echo "PURIFYING HELD-OUT TEST POISONS..."
-echo "=============================="
-"${ENV_PYTHON}" "${PURIFY_ARGS[@]}"
-
-echo "=============================="
-echo "DONE! Purified outputs are in ${OUTPUT_DIR}"
+echo "DONE! Benchmark outputs are in ${OUTPUT_DIR}"
 echo "Finished at: $(date -Is)"
 echo "=============================="

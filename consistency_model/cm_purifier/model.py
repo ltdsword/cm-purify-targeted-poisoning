@@ -119,7 +119,7 @@ class CMBoundaryWrapper(nn.Module):
     def __init__(
         self,
         denoiser: nn.Module,
-        output_mode: CMOutputMode = "pred_x0",
+        output_mode: CMOutputMode = "full_boundary",
         sigma_data: float = 0.5,
         timestep_scaling: float = 10.0,
     ) -> None:
@@ -164,8 +164,7 @@ def build_cm_model(
     backbone: ModelBackbone,
     model_name_or_path: str,
     tiny_hidden_channels: int = 64,
-    output_mode: CMOutputMode = "pred_x0",
+    output_mode: CMOutputMode = "full_boundary",
 ) -> CMBoundaryWrapper:
     denoiser = load_denoiser(backbone, model_name_or_path, tiny_hidden_channels)
     return CMBoundaryWrapper(denoiser=denoiser, output_mode=output_mode)
-

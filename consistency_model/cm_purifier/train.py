@@ -45,7 +45,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--teacher-model", type=str, default="google/ddpm-cifar10-32")
     parser.add_argument("--backbone", choices=["diffusers", "tiny"], default="diffusers")
     parser.add_argument("--tiny-hidden-channels", type=int, default=64)
-    parser.add_argument("--cm-output-mode", choices=["pred_x0", "full_boundary", "no_skip_boundary"], default="pred_x0")
+    parser.add_argument("--cm-output-mode", choices=["pred_x0", "full_boundary", "no_skip_boundary"], default="full_boundary")
     parser.add_argument("--schedule-source", choices=["linear", "diffusers"], default="diffusers")
     parser.add_argument("--num-train-timesteps", type=int, default=1000)
     parser.add_argument("--num-ddim-timesteps", type=int, default=50)

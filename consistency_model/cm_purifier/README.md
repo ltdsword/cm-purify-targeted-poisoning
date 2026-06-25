@@ -105,6 +105,7 @@ PAIR_DIR        input pair dataset root
 OUTPUT_PATH     checkpoint path to write
 TEACHER_MODEL   diffusers DDPM model id or local path
 ENV_NAME        conda environment name
+CM_OUTPUT_MODE  CM output parameterization, default full_boundary
 MAX_STEPS       total optimization steps
 BATCH_SIZE      training batch size
 NUM_WORKERS     dataloader workers
@@ -180,8 +181,9 @@ Saved PNG images:   [0, 1] converted to uint8 RGB
 ```
 
 The model wrapper predicts a clean image. With the default `cm_output_mode` of
-`pred_x0`, the wrapped denoiser predicts epsilon and the wrapper converts it to
-`x_0` using the stored DDPM alpha/sigma schedule.
+`full_boundary`, the wrapped denoiser predicts epsilon, converts it to `x_0`,
+and applies the consistency-model boundary form `c_skip * x_t + c_out * x_0`.
+The older `pred_x0` and `no_skip_boundary` modes remain available for ablations.
 
 ## Logs
 
