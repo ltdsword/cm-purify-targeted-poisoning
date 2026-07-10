@@ -4,6 +4,7 @@
 /dataset_generation/datasets
 /dataset_generation/docs
 /consistency_model/InstantPure/
+/consistency_model/checkpoints/
 /benchmark/outputs/
 
 slurm-*.out
