@@ -1,0 +1,30 @@
+Job ID: 73145
+Running on: gpu02
+Working directory: /media02/ndthuc03/cm-purify-targeted-poisoning
+Repository: /media02/ndthuc03/cm-purify-targeted-poisoning
+Training script: /media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/run_cm_purifier_training.sh
+Benchmark script: /media02/ndthuc03/cm-purify-targeted-poisoning/benchmark/run_benchmark.sh
+Pair directory: /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/datasets/train
+Test directory: /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/datasets/test
+Checkpoint path: /media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/checkpoints/cm_purifier.pth
+CM output mode: full_boundary
+Benchmark output directory: /media02/ndthuc03/cm-purify-targeted-poisoning/benchmark/outputs
+Conda environment: purifying_poison
+Logs directory: /media02/ndthuc03/cm-purify-targeted-poisoning/runners/logs
+Main log: /media02/ndthuc03/cm-purify-targeted-poisoning/runners/logs/train_then_benchmark_73145.log
+Error log: /media02/ndthuc03/cm-purify-targeted-poisoning/runners/logs/train_then_benchmark_err_73145.log
+Started at: 2026-06-27T07:23:12+07:00
+==============================
+1. SUBMITTING ALGORITHM 2 TRAINING...
+==============================
+Submitted batch job 73178
+==============================
+2. SUBMITTING BENCHMARK AFTER TRAINING...
+==============================
+Submitted batch job 73179
+==============================
+CHAIN SUBMITTED
+Training job:  73178
+Benchmark job: 73179 depends on afterok:73178
+Finished at: 2026-06-27T07:23:12+07:00
+==============================

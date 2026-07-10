@@ -713,14 +713,15 @@ retraining directly on the login node.
 ## Run Guide Pipeline
 
 If the datasets already exist and only the CM checkpoint plus benchmark are
-needed, use the chained runner:
+needed, use the single-job runner:
 
 ```bash
 sbatch runners/run_train_then_benchmark.sh
 ```
 
-This submits Algorithm 2 training first, then submits the benchmark with a Slurm
-`afterok` dependency on the training job.
+This uses one Slurm allocation. Inside that job, it trains Algorithm 2 first and
+then runs the benchmark directly after the checkpoint is created. It does not
+submit training or benchmark sub-jobs.
 
 ### 1. Generate Clean/Poison Datasets
 
@@ -891,7 +892,7 @@ When `dataset_generation/datasets/train/` and
 sbatch runners/run_train_then_benchmark.sh
 ```
 
-Useful overrides for this chained runner:
+Useful overrides for this single-job runner:
 
 ```text
 CHECKPOINT_PATH          where Algorithm 2 saves the .pth

@@ -177,6 +177,30 @@ PY
 "${ENV_PYTHON}" -m pip install --constraint "${PIP_CONSTRAINTS}" -r "${REQ_NO_TORCH}"
 
 "${ENV_PYTHON}" - <<'PY'
+from diffusers import DDPMScheduler, UNet2DModel
+import accelerate
+import diffusers
+import huggingface_hub
+import safetensors
+import transformers
+
+expected = {
+    "diffusers": (diffusers.__version__, "0.30.3"),
+    "transformers": (transformers.__version__, "4.44.2"),
+    "accelerate": (accelerate.__version__, "0.33.0"),
+    "huggingface_hub": (huggingface_hub.__version__, "0.24.7"),
+    "safetensors": (safetensors.__version__, "0.4.5"),
+}
+for package, (actual, wanted) in expected.items():
+    if actual != wanted:
+        raise SystemExit(f"ERROR: {package}=={actual}, expected {wanted}. Re-run dependency installation.")
+print("HF stack OK:")
+for package, (actual, _) in expected.items():
+    print(f"  {package}: {actual}")
+print(f"  diffusers classes: {DDPMScheduler.__name__}, {UNet2DModel.__name__}")
+PY
+
+"${ENV_PYTHON}" - <<'PY'
 import os
 import sys
 import torch
