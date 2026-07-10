@@ -1,0 +1,194 @@
+Job ID: 73178
+Running on: gpu04
+Working directory: /media02/ndthuc03/cm-purify-targeted-poisoning
+Repository: /media02/ndthuc03/cm-purify-targeted-poisoning
+Pair directory: /media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/datasets/train
+Output checkpoint: /media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/checkpoints/cm_purifier.pth
+CM output mode: full_boundary
+Conda environment: purifying_poison
+Root requirements: /media02/ndthuc03/cm-purify-targeted-poisoning/requirements.txt
+Logs directory: /media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/logs
+Main log: /media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/logs/cm_purifier_train_73178.log
+Error log: /media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/logs/cm_purifier_train_err_73178.log
+Started at: 2026-06-28T17:32:46+07:00
+SLURM job GPUs: 1
+SLURM step GPUs: <unset>
+CUDA_VISIBLE_DEVICES before setup: 0
+Sun Jun 28 17:32:46 2026       
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.216.03             Driver Version: 535.216.03   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  Tesla V100-DGXS-32GB           On  | 00000000:08:00.0 Off |                    0 |
+| N/A   47C    P0              40W / 300W |      0MiB / 32768MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
+                                                                                         
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
+Requirement already satisfied: pip in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (26.1.2)
+Requirement already satisfied: numpy<2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 2)) (1.26.4)
+Requirement already satisfied: huggingface_hub in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 3)) (1.18.0)
+Requirement already satisfied: tqdm in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 6)) (4.68.2)
+Requirement already satisfied: Pillow in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 11)) (12.2.0)
+Requirement already satisfied: diffusers in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 14)) (0.38.0)
+Requirement already satisfied: transformers in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 15)) (5.10.2)
+Requirement already satisfied: accelerate in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 16)) (1.13.0)
+Requirement already satisfied: safetensors in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 17)) (0.8.0rc1)
+Requirement already satisfied: lmdb in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 21)) (2.2.1)
+Requirement already satisfied: efficientnet_pytorch in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 23)) (0.7.1)
+Requirement already satisfied: pandas in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 24)) (2.3.3)
+Requirement already satisfied: scipy in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 25)) (1.15.3)
+Requirement already satisfied: opencv-python in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 26)) (4.11.0.86)
+Requirement already satisfied: matplotlib in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 27)) (3.10.9)
+Requirement already satisfied: google-cloud-storage in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 28)) (3.11.0)
+Requirement already satisfied: google-cloud-automl in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 29)) (2.20.0)
+Requirement already satisfied: gdown in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from -r /tmp/tmp.xl2f4WRw4i (line 30)) (6.1.0)
+Requirement already satisfied: click>=8.4.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (8.4.1)
+Requirement already satisfied: filelock>=3.10.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (3.29.0)
+Requirement already satisfied: fsspec>=2023.5.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (2026.4.0)
+Requirement already satisfied: hf-xet<2.0.0,>=1.4.3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (1.5.1)
+Requirement already satisfied: httpx<1,>=0.23.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (0.28.1)
+Requirement already satisfied: packaging>=20.9 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (26.0)
+Requirement already satisfied: pyyaml>=5.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (6.0.3)
+Requirement already satisfied: typer<0.26.0,>=0.20.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (0.25.1)
+Requirement already satisfied: typing-extensions>=4.1.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (4.15.0)
+Requirement already satisfied: anyio in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from httpx<1,>=0.23.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (4.13.0)
+Requirement already satisfied: certifi in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from httpx<1,>=0.23.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (2026.5.20)
+Requirement already satisfied: httpcore==1.* in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from httpx<1,>=0.23.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (1.0.9)
+Requirement already satisfied: idna in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from httpx<1,>=0.23.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (3.18)
+Requirement already satisfied: h11>=0.16 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from httpcore==1.*->httpx<1,>=0.23.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (0.16.0)
+Requirement already satisfied: shellingham>=1.3.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from typer<0.26.0,>=0.20.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (1.5.4)
+Requirement already satisfied: rich>=13.8.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from typer<0.26.0,>=0.20.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (15.0.0)
+Requirement already satisfied: annotated-doc>=0.0.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from typer<0.26.0,>=0.20.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (0.0.4)
+Requirement already satisfied: importlib_metadata in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from diffusers->-r /tmp/tmp.xl2f4WRw4i (line 14)) (9.0.0)
+Requirement already satisfied: regex!=2019.12.17 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from diffusers->-r /tmp/tmp.xl2f4WRw4i (line 14)) (2026.5.9)
+Requirement already satisfied: requests in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from diffusers->-r /tmp/tmp.xl2f4WRw4i (line 14)) (2.34.2)
+Requirement already satisfied: tokenizers<=0.23.0,>=0.22.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from transformers->-r /tmp/tmp.xl2f4WRw4i (line 15)) (0.22.2)
+Requirement already satisfied: psutil in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (7.2.2)
+Requirement already satisfied: torch>=2.0.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (2.2.2+cu118)
+Requirement already satisfied: python-dateutil>=2.8.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pandas->-r /tmp/tmp.xl2f4WRw4i (line 24)) (2.9.0.post0)
+Requirement already satisfied: pytz>=2020.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pandas->-r /tmp/tmp.xl2f4WRw4i (line 24)) (2026.2)
+Requirement already satisfied: tzdata>=2022.7 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pandas->-r /tmp/tmp.xl2f4WRw4i (line 24)) (2026.2)
+Requirement already satisfied: contourpy>=1.0.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.xl2f4WRw4i (line 27)) (1.3.2)
+Requirement already satisfied: cycler>=0.10 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.xl2f4WRw4i (line 27)) (0.12.1)
+Requirement already satisfied: fonttools>=4.22.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.xl2f4WRw4i (line 27)) (4.63.0)
+Requirement already satisfied: kiwisolver>=1.3.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.xl2f4WRw4i (line 27)) (1.5.0)
+Requirement already satisfied: pyparsing>=3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from matplotlib->-r /tmp/tmp.xl2f4WRw4i (line 27)) (3.3.2)
+Requirement already satisfied: google-auth<3.0.0,>=2.26.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (2.53.0)
+Requirement already satisfied: google-api-core<3.0.0,>=2.27.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (2.31.0)
+Requirement already satisfied: google-cloud-core<3.0.0,>=2.4.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (2.6.0)
+Requirement already satisfied: google-resumable-media<3.0.0,>=2.7.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (2.10.0)
+Requirement already satisfied: google-crc32c<2.0.0,>=1.6.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (1.8.0)
+Requirement already satisfied: googleapis-common-protos<2.0.0,>=1.63.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core<3.0.0,>=2.27.0->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (1.75.0)
+Requirement already satisfied: protobuf<8.0.0,>=5.29.6 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core<3.0.0,>=2.27.0->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (7.35.0)
+Requirement already satisfied: proto-plus<2.0.0,>=1.24.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core<3.0.0,>=2.27.0->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (1.28.0)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (0.4.2)
+Requirement already satisfied: cryptography>=38.0.3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (48.0.0)
+Requirement already satisfied: charset_normalizer<4,>=2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests->diffusers->-r /tmp/tmp.xl2f4WRw4i (line 14)) (3.4.7)
+Requirement already satisfied: urllib3<3,>=1.26 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests->diffusers->-r /tmp/tmp.xl2f4WRw4i (line 14)) (2.7.0)
+Requirement already satisfied: grpcio<2.0.0,>=1.59.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-cloud-automl->-r /tmp/tmp.xl2f4WRw4i (line 29)) (1.81.0)
+Requirement already satisfied: grpcio-status<2.0.0,>=1.41.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from google-api-core[grpc]<3.0.0,>=2.17.1->google-cloud-automl->-r /tmp/tmp.xl2f4WRw4i (line 29)) (1.81.0)
+Requirement already satisfied: beautifulsoup4 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from gdown->-r /tmp/tmp.xl2f4WRw4i (line 30)) (4.14.3)
+Requirement already satisfied: cffi>=2.0.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from cryptography>=38.0.3->google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (2.0.0)
+Requirement already satisfied: pycparser in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from cffi>=2.0.0->cryptography>=38.0.3->google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (3.0)
+Requirement already satisfied: pyasn1<0.7.0,>=0.6.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from pyasn1-modules>=0.2.1->google-auth<3.0.0,>=2.26.1->google-cloud-storage->-r /tmp/tmp.xl2f4WRw4i (line 28)) (0.6.3)
+Requirement already satisfied: six>=1.5 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from python-dateutil>=2.8.2->pandas->-r /tmp/tmp.xl2f4WRw4i (line 24)) (1.17.0)
+Requirement already satisfied: markdown-it-py>=2.2.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from rich>=13.8.0->typer<0.26.0,>=0.20.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (4.2.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from rich>=13.8.0->typer<0.26.0,>=0.20.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (2.20.0)
+Requirement already satisfied: mdurl~=0.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from markdown-it-py>=2.2.0->rich>=13.8.0->typer<0.26.0,>=0.20.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (0.1.2)
+Requirement already satisfied: sympy in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (1.14.0)
+Requirement already satisfied: networkx in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (3.4.2)
+Requirement already satisfied: jinja2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (3.1.6)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu11==11.8.89 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.8.89)
+Requirement already satisfied: nvidia-cuda-runtime-cu11==11.8.89 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.8.89)
+Requirement already satisfied: nvidia-cuda-cupti-cu11==11.8.87 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.8.87)
+Requirement already satisfied: nvidia-cudnn-cu11==8.7.0.84 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (8.7.0.84)
+Requirement already satisfied: nvidia-cublas-cu11==11.11.3.6 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.11.3.6)
+Requirement already satisfied: nvidia-cufft-cu11==10.9.0.58 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (10.9.0.58)
+Requirement already satisfied: nvidia-curand-cu11==10.3.0.86 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (10.3.0.86)
+Requirement already satisfied: nvidia-cusolver-cu11==11.4.1.48 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.4.1.48)
+Requirement already satisfied: nvidia-cusparse-cu11==11.7.5.86 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.7.5.86)
+Requirement already satisfied: nvidia-nccl-cu11==2.19.3 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (2.19.3)
+Requirement already satisfied: nvidia-nvtx-cu11==11.8.86 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (11.8.86)
+Requirement already satisfied: triton==2.2.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (2.2.0)
+Requirement already satisfied: exceptiongroup>=1.0.2 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from anyio->httpx<1,>=0.23.0->huggingface_hub->-r /tmp/tmp.xl2f4WRw4i (line 3)) (1.3.1)
+Requirement already satisfied: soupsieve>=1.6.1 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from beautifulsoup4->gdown->-r /tmp/tmp.xl2f4WRw4i (line 30)) (2.8.4)
+Requirement already satisfied: zipp>=3.20 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from importlib_metadata->diffusers->-r /tmp/tmp.xl2f4WRw4i (line 14)) (4.1.0)
+Requirement already satisfied: MarkupSafe>=2.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from jinja2->torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (3.0.3)
+Requirement already satisfied: PySocks!=1.5.7,>=1.5.6 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from requests[socks]->gdown->-r /tmp/tmp.xl2f4WRw4i (line 30)) (1.7.1)
+Requirement already satisfied: mpmath<1.4,>=1.1.0 in /media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages (from sympy->torch>=2.0.0->accelerate->-r /tmp/tmp.xl2f4WRw4i (line 16)) (1.3.0)
+PyTorch: 2.2.2+cu118
+CUDA_VISIBLE_DEVICES: 0
+CUDA available: True
+CUDA device: Tesla V100-DGXS-32GB
+==============================
+TRAINING CM PURIFIER...
+==============================
+2026-06-28 17:34:00 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:00 | INFO | cm_purifier.train | STARTING CM PURIFIER TRAINING
+2026-06-28 17:34:00 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:00 | INFO | cm_purifier.train | Seed: 2026
+2026-06-28 17:34:00 | INFO | cm_purifier.train | Resolved device: cuda
+2026-06-28 17:34:00 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:00 | INFO | cm_purifier.train | 1. VALIDATING DATASET...
+2026-06-28 17:34:00 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:02 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:02 | INFO | cm_purifier.train | CM purifier training configuration
+2026-06-28 17:34:02 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:02 | INFO | cm_purifier.train | Selected args:
+{
+  "backbone": "diffusers",
+  "batch_size": 128,
+  "cm_output_mode": "full_boundary",
+  "device": "cuda",
+  "ema_decay": 0.9999,
+  "gamma_bp": 1.0,
+  "gamma_clean": 0.0,
+  "gamma_wb": 1.0,
+  "lambda_cls": 0.0,
+  "lambda_distill": 1.0,
+  "lambda_id": 1.0,
+  "lambda_rec": 1.0,
+  "learning_rate": 0.0001,
+  "max_steps": 50000,
+  "num_ddim_timesteps": 50,
+  "num_train_timesteps": 1000,
+  "out": "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/checkpoints/cm_purifier.pth",
+  "pair_dir": "/media02/ndthuc03/cm-purify-targeted-poisoning/dataset_generation/datasets/train",
+  "schedule_source": "diffusers",
+  "teacher_model": "google/ddpm-cifar10-32",
+  "timestep_fraction": 0.5
+}
+2026-06-28 17:34:02 | INFO | cm_purifier.train | Dataset summary:
+{
+  "attacks": {
+    "bp": 10000,
+    "clean": 10000,
+    "wb": 10000
+  },
+  "labels": {
+    "0": 3000,
+    "1": 3000,
+    "2": 3000,
+    "3": 3000,
+    "4": 3000,
+    "5": 3000,
+    "6": 3000,
+    "7": 3000,
+    "8": 3000,
+    "9": 3000
+  },
+  "total": 30000
+}
+2026-06-28 17:34:02 | INFO | cm_purifier.train | ========================================================================
+2026-06-28 17:34:02 | INFO | cm_purifier.train | 2. BUILDING MODEL AND DDPM SCHEDULE...
+2026-06-28 17:34:02 | INFO | cm_purifier.train | ========================================================================

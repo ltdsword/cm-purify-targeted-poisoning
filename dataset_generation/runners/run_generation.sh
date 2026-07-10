@@ -6,7 +6,6 @@
 #SBATCH --mem=32G              
 #SBATCH --gres=gpu:1           
 #SBATCH --time=48:00:00        
-#SBATCH --exclude=gpu03
 
 set -euo pipefail
 

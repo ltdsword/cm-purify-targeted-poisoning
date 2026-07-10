@@ -593,93 +593,320 @@ Evaluate on held-out poison cases not used for purifier training:
 
 ---
 
-## Suggested Repository Structure
+## Current Repository Structure
+
+The current codebase is organized around four real pipeline stages:
 
 ```text
 .
 ├── README.md
-├── configs/
-│   ├── cifar10_manifest.yaml
-│   ├── cm_train.yaml
-│   ├── wb_attack.yaml
-│   └── bp_attack.yaml
-├── data/
-│   ├── manifests/
-│   ├── poison_pairs/
-│   └── eval_cases/
-├── attacks/
-│   ├── witches_brew/
-│   └── bullseye_polytope/
-├── purifier/
-│   ├── model.py
-│   ├── forward_process.py
-│   ├── losses.py
-│   ├── train.py
-│   └── infer.py
-├── evaluation/
-│   ├── train_victim.py
-│   ├── eval_asr.py
-│   └── eval_clean_accuracy.py
-└── scripts/
-    ├── generate_manifest.py
-    ├── generate_poison_pairs.py
-    ├── train_purifier.sh
-    ├── purify_dataset.sh
-    └── evaluate_defense.sh
+├── requirements.txt
+├── dataset_generation/
+│   ├── scripts/dataset_generation.py
+│   ├── runners/run_generation.sh
+│   ├── configs/
+│   │   ├── wb_benchmark_setups.pickle
+│   │   └── bp_benchmark_setups.pickle
+│   ├── datasets/
+│   │   ├── train/
+│   │   │   ├── clean/
+│   │   │   └── poisons/
+│   │   └── test/
+│   │       ├── WB_c*/
+│   │       └── BP_c*_g*/
+│   ├── poisoning-gradient-matching/
+│   └── BullseyePoison/
+├── consistency_model/
+│   ├── run_cm_purifier_training.sh
+│   ├── checkpoints/
+│   ├── logs/
+│   ├── cm_purifier/
+│   │   ├── train.py
+│   │   ├── dataset.py
+│   │   ├── model.py
+│   │   ├── solver.py
+│   │   ├── losses.py
+│   │   ├── checkpoint.py
+│   │   ├── infer.py
+│   │   └── smoke_test.py
+│   └── InstantPure/
+├── purify/
+│   ├── purifier.py
+│   ├── purify_test.py
+│   ├── dataset.py
+│   ├── run_purify_test.sh
+│   ├── outputs/
+│   └── logs/
+└── benchmark/
+    ├── run_benchmark.sh
+    ├── run_benchmark.py
+    ├── cases.py
+    ├── materialize.py
+    ├── wb.py
+    ├── bp.py
+    ├── common.py
+    ├── outputs/
+    └── logs/
 ```
+
+Important generated outputs:
+
+```text
+dataset_generation/datasets/train/       purifier-training clean/poison pairs
+dataset_generation/datasets/test/        held-out WB/BP evaluation cases
+consistency_model/checkpoints/cm_purifier.pth
+purify/outputs/test_purified/
+benchmark/outputs/<run_id>/benchmark_results.csv
+```
+
+`InstantPure/` is kept only as a reference implementation. The active purifier
+code is the pixel-space CM implementation in `consistency_model/cm_purifier/`
+and the callable inference wrapper in `purify/purifier.py`.
 
 ---
 
-## Minimal Usage Plan
+## Setup Guide
 
-### 1. Generate manifest
+This project is intended to run on the university Slurm server. Long jobs should
+be submitted with the provided `.sh` runners rather than launched directly with
+Python.
 
-```bash
-python scripts/generate_manifest.py \
-  --dataset cifar10 \
-  --seed 2026 \
-  --out data/manifests/cifar10_manifest.json
+### Environment
+
+All runners use the same conda environment:
+
+```text
+purifying_poison
 ```
 
-### 2. Generate poison-clean pairs
+The runners create or repair this environment automatically if needed. They also
+install dependencies from `requirements.txt`, pin `numpy<2`, and install the
+CUDA PyTorch/Torchvision build used by the project.
 
-```bash
-python scripts/generate_poison_pairs.py \
-  --manifest data/manifests/cifar10_manifest.json \
-  --attack wb,bp \
-  --out data/poison_pairs/
+### Resource Policy
+
+The provided runners follow the current server limits:
+
+```text
+GPU:      1 GPU
+Memory:   up to 64GB
+Time:     up to 48 hours
 ```
 
-### 3. Train purifier
+### Local Checks Only
+
+Before submitting a job, it is safe to run syntax/static checks:
 
 ```bash
-python purifier/train.py \
-  --config configs/cm_train.yaml \
-  --pair-dir data/poison_pairs/ \
-  --out checkpoints/cm_purifier.pt
+bash -n dataset_generation/runners/run_generation.sh
+bash -n consistency_model/run_cm_purifier_training.sh
+bash -n purify/run_purify_test.sh
+bash -n benchmark/run_benchmark.sh
+python -m compileall consistency_model/cm_purifier purify benchmark
 ```
 
-### 4. Purify untrusted training set
+Do not run full poison generation, CM training, purification, or benchmark
+retraining directly on the login node.
+
+---
+
+## Run Guide Pipeline
+
+If the datasets already exist and only the CM checkpoint plus benchmark are
+needed, use the single-job runner:
 
 ```bash
-python purifier/infer.py \
-  --checkpoint checkpoints/cm_purifier.pt \
-  --input data/untrusted_train/ \
-  --output data/sanitized_train/ \
-  --t-star 0.25
+sbatch runners/run_train_then_benchmark.sh
 ```
 
-### 5. Train and evaluate victim
+This uses one Slurm allocation. Inside that job, it trains Algorithm 2 first and
+then runs the benchmark directly after the checkpoint is created. It does not
+submit training or benchmark sub-jobs.
+
+### 1. Generate Clean/Poison Datasets
+
+Submit the dataset generation runner:
 
 ```bash
-python evaluation/train_victim.py \
-  --train data/sanitized_train/ \
-  --arch resnet18 \
-  --out checkpoints/victim_sanitized.pt
+sbatch dataset_generation/runners/run_generation.sh
+```
 
-python evaluation/eval_asr.py \
-  --model checkpoints/victim_sanitized.pt \
-  --eval-cases data/eval_cases/
+This runs:
+
+```text
+1. setup_clean
+2. craft_wb
+3. craft_bp
+```
+
+Architecture alignment during poison generation:
+
+```text
+WB: brew_poison.py with --net ResNet18
+BP: craft_poisons_transfer.py with --substitute-nets ResNet18 and --target-net ResNet18
+```
+
+Main outputs:
+
+```text
+dataset_generation/datasets/train/clean/
+dataset_generation/datasets/train/poisons/
+dataset_generation/datasets/test/WB_c*/
+dataset_generation/datasets/test/BP_c*_g*/
+dataset_generation/logs/poison_pipeline_<job_id>.log
+```
+
+### 2. Train The CM Purifier
+
+Submit Algorithm 2 training:
+
+```bash
+sbatch consistency_model/run_cm_purifier_training.sh
+```
+
+Default input/output:
+
+```text
+input:   dataset_generation/datasets/train
+output:  consistency_model/checkpoints/cm_purifier.pth
+logs:    consistency_model/logs/cm_purifier_train_<job_id>.log
+```
+
+Useful overrides:
+
+```bash
+MAX_STEPS=50000 BATCH_SIZE=128 LOG_STEPS=100 CM_OUTPUT_MODE=full_boundary \
+sbatch consistency_model/run_cm_purifier_training.sh
+```
+
+### 3. Smoke-Test Purifier Loading And Two-Image Inference
+
+After the `.pth` checkpoint exists, submit the smoke test:
+
+```bash
+sbatch consistency_model/smoke_test.sh
+```
+
+This verifies that the checkpoint can be loaded and that the purifier can run on
+a tiny image subset. It is not the full benchmark.
+
+### 4. Purify Held-Out Poison Images
+
+Submit Algorithm 3 test-case purification:
+
+```bash
+sbatch purify/run_purify_test.sh
+```
+
+Default input/output:
+
+```text
+checkpoint:  consistency_model/checkpoints/cm_purifier.pth
+input:       dataset_generation/datasets/test
+output:      purify/outputs/test_purified
+logs:        purify/logs/purify_test_<job_id>.log
+```
+
+If the checkpoint is missing, the runner submits CM training first and then
+re-submits purification with a Slurm dependency.
+
+Useful small run:
+
+```bash
+MAX_IMAGES=32 LOG_STEPS=16 sbatch purify/run_purify_test.sh
+```
+
+### 5. Run The Defense Benchmark
+
+Submit the benchmark runner:
+
+```bash
+sbatch benchmark/run_benchmark.sh
+```
+
+The benchmark does the realistic defense evaluation:
+
+```text
+1. Build a full tampered CIFAR-10 train set for each held-out case.
+2. Replace clean base images with case poison images.
+3. Purify the entire tampered train set with the CM purifier.
+4. Retrain/evaluate on poisoned data.
+5. Retrain/evaluate on purified data.
+6. Write the comparison table.
+```
+
+WB and BP are intentionally evaluated with different retraining paths:
+
+```text
+WB: Witches' Brew / Forest stack, ResNet18 victim
+BP: BullseyePoison transfer stack, ResNet18 victim
+```
+
+Default output:
+
+```text
+benchmark/outputs/<run_id>/
+benchmark/outputs/<run_id>/benchmark_results.csv
+benchmark/outputs/<run_id>/benchmark_results.jsonl
+benchmark/logs/benchmark_<job_id>.log
+```
+
+The CSV contains:
+
+```text
+Case, Target, Attack,
+Clean Accuracy (Poison), Target Acc (Poison),
+Clean Acc (Purified), Target Acc (Purified)
+```
+
+Useful small checks:
+
+```bash
+MAX_CASES=1 SKIP_RETRAIN=1 sbatch benchmark/run_benchmark.sh
+ATTACK_FILTER=WB MAX_CASES=1 WB_EPOCHS=1 sbatch benchmark/run_benchmark.sh
+ATTACK_FILTER=BP MAX_CASES=1 BP_RETRAIN_EPOCHS=1 sbatch benchmark/run_benchmark.sh
+```
+
+Key benchmark overrides:
+
+```text
+ATTACK_FILTER        all, WB, or BP
+CASE_FILTER          comma-separated names/globs, e.g. WB_c0,BP_c0_g0
+MAX_CASES            cap number of cases
+T_STAR               purification timestep
+BATCH_SIZE           purification batch size, default 64
+SKIP_PURIFY          use existing purified_train folders
+SKIP_RETRAIN         materialize/purify only
+BP_VICTIM_NET        default ResNet18
+WB_EPOCHS            optional WB epoch override
+BP_RETRAIN_EPOCHS    default 60
+```
+
+### Shortcut: Datasets Already Exist
+
+When `dataset_generation/datasets/train/` and
+`dataset_generation/datasets/test/` already exist but
+`consistency_model/checkpoints/cm_purifier.pth` does not, run:
+
+```bash
+sbatch runners/run_train_then_benchmark.sh
+```
+
+Useful overrides for this single-job runner:
+
+```text
+CHECKPOINT_PATH          where Algorithm 2 saves the .pth
+PAIR_DIR                 purifier-training dataset, default dataset_generation/datasets/train
+TEST_DIR                 benchmark test cases, default dataset_generation/datasets/test
+BENCHMARK_OUTPUT_DIR     default benchmark/outputs
+MAX_STEPS                forwarded to CM training
+BATCH_SIZE               forwarded to CM training
+CM_OUTPUT_MODE           forwarded to CM training, default full_boundary
+BENCHMARK_BATCH_SIZE     forwarded to benchmark purification, default 64
+ATTACK_FILTER            all, WB, or BP
+MAX_CASES                cap benchmark cases
+BP_VICTIM_NET            default ResNet18
+BP_RETRAIN_EPOCHS        default 60
 ```
 
 ---
