@@ -1,0 +1,55 @@
+/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=AlexNet_Weights.IMAGENET1K_V1`. You can also use `weights=AlexNet_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/logging/__init__.py", line 1103, in emit
+    stream.write(msg + self.terminator)
+BrokenPipeError: [Errno 32] Broken pipe
+Call stack:
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/train.py", line 544, in <module>
+    main()
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/train.py", line 518, in main
+    LOGGER.info(
+Message: 'Step: 45600/50000 | 91.20% | lr: 0.000100 | Training loss is 0.2532 | distill: 0.0015 | rec: 0.1236 | id: 0.1131 | lpips: 0.1507 | lpips weighted: 0.0151 | lpips weight: 0.1000 | cls: 0.0000 | elapsed: 06:49:17 | eta: 00:39:29 | gpu: 0.8/10.7 GB'
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/logging/__init__.py", line 1103, in emit
+    stream.write(msg + self.terminator)
+BrokenPipeError: [Errno 32] Broken pipe
+Call stack:
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/train.py", line 544, in <module>
+    main()
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/train.py", line 518, in main
+    LOGGER.info(
+Message: 'Step: 45700/50000 | 91.40% | lr: 0.000100 | Training loss is 0.2500 | distill: 0.0015 | rec: 0.1231 | id: 0.1103 | lpips: 0.1513 | lpips weighted: 0.0151 | lpips weight: 0.1000 | cls: 0.0000 | elapsed: 06:50:11 | eta: 00:38:35 | gpu: 0.8/10.7 GB'
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/logging/__init__.py", line 1103, in emit
+    stream.write(msg + self.terminator)
+BrokenPipeError: [Errno 32] Broken pipe
+Call stack:
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/train.py", line 544, in <module>
+    main()
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/train.py", line 518, in main
+    LOGGER.info(
+Message: 'Step: 45800/50000 | 91.60% | lr: 0.000100 | Training loss is 0.2441 | distill: 0.0013 | rec: 0.1225 | id: 0.1061 | lpips: 0.1423 | lpips weighted: 0.0142 | lpips weight: 0.1000 | cls: 0.0000 | elapsed: 06:51:05 | eta: 00:37:41 | gpu: 0.8/10.7 GB'
+Arguments: ()
+--- Logging error ---
+Traceback (most recent call last):
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/py

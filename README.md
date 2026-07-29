@@ -317,10 +317,23 @@ $$
 x_t^{clean} = \sqrt{\bar{\alpha}_t}x_{clean} + \sqrt{1 - \bar{\alpha}_t}\epsilon.
 $$
 
+### 5. LPIPS perceptual preservation loss
+
+The reviewed LPIPS strategy compares the predicted and paired clean images with
+a frozen AlexNet LPIPS network. Both images are clamped to `[-1, 1]` and resized
+to `64x64` for the perceptual feature pass:
+
+$$
+\mathcal{L}_{lpips} = LPIPS(\hat{x}_0, x_{clean}).
+$$
+
+Its weight warms up linearly over the first 2,000 optimization steps. LPIPS
+complements the reconstruction and identity losses; it does not replace them.
+
 ### Full objective
 
 $$
-\mathcal{L}_{total} = \lambda_1\mathcal{L}_{distill} + \lambda_2\mathcal{L}_{rec} + \lambda_3\mathcal{L}_{cls} + \lambda_4\mathcal{L}_{id}.
+\mathcal{L}_{total} = \lambda_1\mathcal{L}_{distill} + \lambda_2\mathcal{L}_{rec} + \lambda_3\mathcal{L}_{cls} + \lambda_4\mathcal{L}_{id} + \lambda_5 w(s)\mathcal{L}_{lpips}.
 $$
 
 ---
@@ -396,9 +409,10 @@ $$
    i. Compute reconstruction loss.
    j. Compute label preservation loss.
    k. Compute identity loss for clean identity samples.
-   l. Combine losses into L_total.
-   m. Update student parameters.
-   n. Update EMA teacher parameters.
+   l. Compute warmed-up LPIPS loss when enabled.
+   m. Combine losses into L_total.
+   n. Update student parameters.
+   o. Update EMA teacher parameters.
 
 2. Return trained purifier P_theta.
 ```
@@ -578,7 +592,7 @@ Tune:
 - $t^{\star}$
 - $\gamma_{WB}$
 - $\gamma_{BP}$
-- $\lambda_1, \lambda_2, \lambda_3, \lambda_4$
+- $\lambda_1, \lambda_2, \lambda_3, \lambda_4, \lambda_5$
 - EMA decay
 - Timestep schedule
 
@@ -618,6 +632,7 @@ The current codebase is organized around four real pipeline stages:
 │   └── BullseyePoison/
 ├── consistency_model/
 │   ├── run_cm_purifier_training.sh
+│   ├── run_cm_purifier_training_lpips.sh
 │   ├── checkpoints/
 │   ├── logs/
 │   ├── cm_purifier/
@@ -628,8 +643,13 @@ The current codebase is organized around four real pipeline stages:
 │   │   ├── losses.py
 │   │   ├── checkpoint.py
 │   │   ├── infer.py
-│   │   └── smoke_test.py
+│   │   ├── smoke_test.py
+│   │   └── tests/
 │   └── InstantPure/
+├── runners/
+│   ├── run_train_then_benchmark.sh
+│   ├── run_lpips_train_then_tstar_benchmarks.sh
+│   └── run_benchmark_tstar_*.sh
 ├── purify/
 │   ├── purifier.py
 │   ├── purify_test.py
@@ -655,8 +675,10 @@ Important generated outputs:
 dataset_generation/datasets/train/       purifier-training clean/poison pairs
 dataset_generation/datasets/test/        held-out WB/BP evaluation cases
 consistency_model/checkpoints/cm_purifier.pth
+consistency_model/checkpoints/cm_purifier_lpips.pth
 purify/outputs/test_purified/
 benchmark/outputs/<run_id>/benchmark_results.csv
+benchmark/outputs/slurm_<job_id>/t_star_*/benchmark_results.csv
 ```
 
 `InstantPure/` is kept only as a reference implementation. The active purifier
@@ -700,6 +722,7 @@ Before submitting a job, it is safe to run syntax/static checks:
 ```bash
 bash -n dataset_generation/runners/run_generation.sh
 bash -n consistency_model/run_cm_purifier_training.sh
+bash -n runners/run_lpips_train_then_tstar_benchmarks.sh
 bash -n purify/run_purify_test.sh
 bash -n benchmark/run_benchmark.sh
 python -m compileall consistency_model/cm_purifier purify benchmark
@@ -722,6 +745,16 @@ sbatch runners/run_train_then_benchmark.sh
 This uses one Slurm allocation. Inside that job, it trains Algorithm 2 first and
 then runs the benchmark directly after the checkpoint is created. It does not
 submit training or benchmark sub-jobs.
+
+For the reviewed LPIPS strategy and the four controlled timesteps, use:
+
+```bash
+sbatch runners/run_lpips_train_then_tstar_benchmarks.sh
+```
+
+This trains `cm_purifier_lpips.pth` once and then benchmarks `t_star` values
+50, 100, 150, and 200 sequentially in the same allocation. It does not call
+`sbatch` internally.
 
 ### 1. Generate Clean/Poison Datasets
 
@@ -892,13 +925,54 @@ When `dataset_generation/datasets/train/` and
 sbatch runners/run_train_then_benchmark.sh
 ```
 
+For LPIPS training followed by the complete timestep sweep, submit:
+
+```bash
+sbatch runners/run_lpips_train_then_tstar_benchmarks.sh
+```
+
+The output hierarchy is:
+
+```text
+benchmark/outputs/slurm_<job_id>/
+  t_star_050/
+    benchmark_results.csv
+    benchmark_results.jsonl
+    run_config.json
+    WB_c*/
+    BP_c*_g*/
+  t_star_100/
+  t_star_150/
+  t_star_200/
+```
+
+Every `t_star_*` directory has the same internal structure as the previous
+single-run `slurm_73353` directory. The four runs use the same checkpoint,
+seed, case ordering, and purification batch size.
+
+The earlier run took about 3.4 hours for training and 9.4 hours for one complete
+benchmark, so this combined sweep is expected to be close to the 48-hour job
+limit after LPIPS overhead. If it stops after some timesteps, retain the
+checkpoint and completed folders, then resume only the remaining values:
+
+```bash
+SKIP_TRAIN=1 T_STARS="150 200" \
+BENCHMARK_OUTPUT_DIR=benchmark/outputs/slurm_<original_job_id> \
+sbatch runners/run_lpips_train_then_tstar_benchmarks.sh
+```
+
 Useful overrides for this single-job runner:
 
 ```text
 CHECKPOINT_PATH          where Algorithm 2 saves the .pth
 PAIR_DIR                 purifier-training dataset, default dataset_generation/datasets/train
 TEST_DIR                 benchmark test cases, default dataset_generation/datasets/test
-BENCHMARK_OUTPUT_DIR     default benchmark/outputs
+BENCHMARK_OUTPUT_DIR     generic default benchmark/outputs; sweep default benchmark/outputs/slurm_<job_id>
+T_STARS                  integer timestep list for a sequential sweep
+SWEEP_RUN_ID             parent folder name, default slurm_<job_id>
+LAMBDA_LPIPS             LPIPS weight, sweep default 0.10
+LPIPS_WARMUP_STEPS       LPIPS warmup, sweep default 2000
+SKIP_TRAIN               reuse an existing checkpoint when set to 1
 MAX_STEPS                forwarded to CM training
 BATCH_SIZE               forwarded to CM training
 CM_OUTPUT_MODE           forwarded to CM training, default full_boundary

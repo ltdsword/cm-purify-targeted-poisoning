@@ -11,6 +11,7 @@ torchvision>0.5.0
 
 # Image Processing
 Pillow
+lpips==0.1.4
 
 # Hugging Face Diffusers (for GDMP Purification)
 diffusers==0.30.3

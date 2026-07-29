@@ -40,6 +40,10 @@ PAIR_DIR="${PAIR_DIR:-${REPO_DIR}/dataset_generation/datasets/train}"
 OUTPUT_PATH="${OUTPUT_PATH:-${CONSISTENCY_DIR}/checkpoints/cm_purifier.pth}"
 TEACHER_MODEL="${TEACHER_MODEL:-google/ddpm-cifar10-32}"
 CM_OUTPUT_MODE="${CM_OUTPUT_MODE:-full_boundary}"
+LAMBDA_LPIPS="${LAMBDA_LPIPS:-0.0}"
+LPIPS_NET="${LPIPS_NET:-alex}"
+LPIPS_IMAGE_SIZE="${LPIPS_IMAGE_SIZE:-64}"
+LPIPS_WARMUP_STEPS="${LPIPS_WARMUP_STEPS:-2000}"
 ENV_NAME="${ENV_NAME:-purifying_poison}"
 ROOT_REQUIREMENTS="${ROOT_REQUIREMENTS:-${REPO_DIR}/requirements.txt}"
 LOG_DIR="${CONSISTENCY_DIR}/logs"
@@ -57,6 +61,9 @@ echo "Repository: ${REPO_DIR}"
 echo "Pair directory: ${PAIR_DIR}"
 echo "Output checkpoint: ${OUTPUT_PATH}"
 echo "CM output mode: ${CM_OUTPUT_MODE}"
+echo "LPIPS weight: ${LAMBDA_LPIPS}"
+echo "LPIPS network/image size: ${LPIPS_NET}/${LPIPS_IMAGE_SIZE}"
+echo "LPIPS warmup steps: ${LPIPS_WARMUP_STEPS}"
 echo "Conda environment: ${ENV_NAME}"
 echo "Root requirements: ${ROOT_REQUIREMENTS}"
 echo "Logs directory: ${LOG_DIR}"
@@ -93,6 +100,7 @@ export PATH="${ENV_DIR}/bin:${PATH}"
 export PYTHONNOUSERSITE=1
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export PYTHONUNBUFFERED=1
+export LAMBDA_LPIPS LPIPS_NET LPIPS_IMAGE_SIZE LPIPS_WARMUP_STEPS
 
 REQ_NO_TORCH="$(mktemp)"
 PIP_CONSTRAINTS="$(mktemp)"
@@ -141,6 +149,22 @@ PY
 
 "${ENV_PYTHON}" - <<'PY'
 import os
+
+if float(os.environ["LAMBDA_LPIPS"]) > 0.0:
+    from importlib.metadata import version
+
+    import lpips
+
+    model = lpips.LPIPS(net=os.environ["LPIPS_NET"], verbose=False)
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    print(f"LPIPS dependency OK: {version('lpips')} | network: {os.environ['LPIPS_NET']}")
+else:
+    print("LPIPS dependency validation skipped because LAMBDA_LPIPS=0")
+PY
+
+"${ENV_PYTHON}" - <<'PY'
+import os
 import sys
 import torch
 
@@ -179,7 +203,11 @@ echo "=============================="
     --ema-decay "${EMA_DECAY:-0.9999}" \
     --gamma-wb "${GAMMA_WB:-1.0}" \
     --gamma-bp "${GAMMA_BP:-1.0}" \
-    --gamma-clean "${GAMMA_CLEAN:-0.0}"
+    --gamma-clean "${GAMMA_CLEAN:-0.0}" \
+    --lambda-lpips "${LAMBDA_LPIPS}" \
+    --lpips-net "${LPIPS_NET}" \
+    --lpips-image-size "${LPIPS_IMAGE_SIZE}" \
+    --lpips-warmup-steps "${LPIPS_WARMUP_STEPS}"
 
 echo "=============================="
 echo "DONE! Checkpoint saved to ${OUTPUT_PATH}"

@@ -212,8 +212,16 @@ def main(args=None):
     )
     image_size = purifier.image_size
     t_star = purifier.t_star
+    schedule = purifier.schedule_statistics()
     LOGGER.info("Resolved device: %s", device)
-    LOGGER.info("Resolved integer t_star: %d", t_star)
+    LOGGER.info(
+        "Resolved schedule | t_star: %d | alpha: %.6f | sigma: %.6f | snr: %.6f | noise seed: %d",
+        t_star,
+        schedule["alpha"],
+        schedule["sigma"],
+        schedule["snr"],
+        schedule["seed"],
+    )
     LOGGER.info("Checkpoint training args image_size: %d", image_size)
 
     log_section("3. PURIFYING POISON IMAGES...")
@@ -258,6 +266,9 @@ def main(args=None):
         "requested_t_star": args.t_star,
         "batch_size": args.batch_size,
         "seed": args.seed,
+        "alpha_t": schedule["alpha"],
+        "sigma_t": schedule["sigma"],
+        "snr": schedule["snr"],
         "device": str(device),
         "copy_reference_dirs": bool(args.copy_reference_dirs),
         "cases": case_summary,
