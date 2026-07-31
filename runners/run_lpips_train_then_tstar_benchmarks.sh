@@ -47,7 +47,7 @@ export LPIPS_IMAGE_SIZE="${LPIPS_IMAGE_SIZE:-64}"
 export LPIPS_WARMUP_STEPS="${LPIPS_WARMUP_STEPS:-2000}"
 
 # Run all requested timesteps sequentially under one parent output directory.
-export T_STARS="${T_STARS:-150 200}"
+export T_STARS="${T_STARS:-50 100}"
 export BENCHMARK_BATCH_SIZE="${BENCHMARK_BATCH_SIZE:-64}"
 export BENCHMARK_SEED="${BENCHMARK_SEED:-2026}"
 export BENCHMARK_OUTPUT_DIR="${BENCHMARK_OUTPUT_DIR:-${REPO_DIR}/benchmark/outputs/${SWEEP_RUN_ID}}"
