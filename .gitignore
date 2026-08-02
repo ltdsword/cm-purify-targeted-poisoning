@@ -13,3 +13,7 @@ slurm-*.out
 .env
 .venv
 consistency_model/InstantPure
+prompt.txt
+AGENT.md
+AGENTS.md
+CLAUDE.md
