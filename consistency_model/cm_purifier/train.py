@@ -19,7 +19,7 @@ from . import ATTACK_TO_ID
 from .checkpoint import load_training_checkpoint, save_training_checkpoint
 from .dataset import PoisonPairDataset
 from .ema import create_ema_model, update_ema
-from .losses import LossWeights, compute_loss_dict
+from .losses import LossWeights, compute_loss_dict, linear_warmup_factor
 from .model import build_cm_model
 from .schedules import (
     compute_alpha_sigma,
@@ -65,7 +65,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lambda-distill", type=float, default=1.0)
     parser.add_argument("--lambda-rec", type=float, default=1.0)
     parser.add_argument("--lambda-id", type=float, default=1.0)
+    parser.add_argument("--lambda-lpips", type=float, default=0.0)
     parser.add_argument("--lambda-cls", type=float, default=0.0)
+    parser.add_argument("--lpips-net", choices=["alex", "vgg", "squeeze"], default="alex")
+    parser.add_argument("--lpips-image-size", type=int, default=64)
+    parser.add_argument("--lpips-warmup-steps", type=int, default=2000)
     parser.add_argument("--distill-loss-type", choices=["l1", "l2", "huber"], default="l2")
     parser.add_argument("--classifier-path", type=str, default=None)
     parser.add_argument("--device", type=str, default="auto")
@@ -170,6 +174,9 @@ def format_metrics(
         f"distill: {metrics.get('loss_distill', 0.0):.4f} | "
         f"rec: {metrics.get('loss_reconstruction', 0.0):.4f} | "
         f"id: {metrics.get('loss_identity', 0.0):.4f} | "
+        f"lpips: {metrics.get('loss_lpips', 0.0):.4f} | "
+        f"lpips weighted: {metrics.get('loss_lpips_weighted', 0.0):.4f} | "
+        f"lpips weight: {metrics.get('lpips_effective_weight', 0.0):.4f} | "
         f"cls: {metrics.get('loss_classifier', 0.0):.4f} | "
         f"elapsed: {format_duration(elapsed_seconds)} | "
         f"eta: {format_duration(eta_seconds)} | "
@@ -201,7 +208,11 @@ def log_run_configuration(args, device: torch.device, dataset_summary: Dict[str,
         "lambda_distill": args.lambda_distill,
         "lambda_rec": args.lambda_rec,
         "lambda_id": args.lambda_id,
+        "lambda_lpips": args.lambda_lpips,
         "lambda_cls": args.lambda_cls,
+        "lpips_net": args.lpips_net,
+        "lpips_image_size": args.lpips_image_size,
+        "lpips_warmup_steps": args.lpips_warmup_steps,
         "device": str(device),
     }
     log_section("CM purifier training configuration")
@@ -272,6 +283,27 @@ def load_optional_classifier(classifier_path: Optional[str], device: torch.devic
     return classifier
 
 
+# Purpose: Load and freeze the optional pretrained LPIPS feature network.
+# Input: LPIPS weight, network name, and target device.
+# Output: eval-mode LPIPS module, or None when perceptual loss is disabled.
+def load_optional_lpips(lambda_lpips: float, network: str, device: torch.device):
+    if lambda_lpips <= 0.0:
+        return None
+    try:
+        import lpips
+    except ImportError as exc:
+        raise ImportError(
+            "LPIPS loss is enabled but the lpips package is unavailable. "
+            "Install the repository requirements through the Slurm runner."
+        ) from exc
+
+    model = lpips.LPIPS(net=network, verbose=False).to(device)
+    model.eval()
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    return model
+
+
 # Purpose: Build the DDPM alpha/sigma schedules requested by training arguments.
 # Input: parsed arguments and target device.
 # Output: betas, alpha cumulative products, alpha schedule, and sigma schedule.
@@ -310,7 +342,7 @@ def move_batch_to_device(batch: Dict[str, object], device: torch.device) -> Dict
 
 
 # Purpose: Run one Algorithm 2 optimization step.
-# Input: batch, models, schedules, solver, classifier, optimizer, loss weights, args, and device.
+# Input: batch, models, schedules, solver, frozen auxiliary models, optimizer, step, args, and device.
 # Output: dictionary of scalar loss metrics.
 def train_one_step(
     batch,
@@ -320,8 +352,10 @@ def train_one_step(
     sigma_schedule,
     solver,
     classifier,
+    lpips_model,
     optimizer,
     loss_weights: LossWeights,
+    optimization_step: int,
     args,
     device,
 ):
@@ -365,6 +399,9 @@ def train_one_step(
         classifier=classifier,
         weights=loss_weights,
         distill_loss_type=args.distill_loss_type,
+        lpips_model=lpips_model,
+        lpips_image_size=args.lpips_image_size,
+        lpips_warmup_factor=linear_warmup_factor(optimization_step, args.lpips_warmup_steps),
     )
     optimizer.zero_grad(set_to_none=True)
     loss_dict["loss"].backward()
@@ -427,10 +464,28 @@ def main(args=None):
     if args.lambda_cls > 0.0 and classifier is None:
         raise ValueError("--lambda-cls > 0 requires --classifier-path")
     classifier_for_loss = classifier if args.lambda_cls > 0.0 else None
+    if args.lambda_lpips < 0.0:
+        raise ValueError("--lambda-lpips must be non-negative")
+    if args.lpips_image_size <= 0:
+        raise ValueError("--lpips-image-size must be positive")
+    if args.lpips_warmup_steps < 0:
+        raise ValueError("--lpips-warmup-steps must be non-negative")
+    lpips_model = load_optional_lpips(args.lambda_lpips, args.lpips_net, device)
+    if lpips_model is not None:
+        LOGGER.info(
+            "LPIPS enabled | network: %s | image size: %d | target weight: %.4f | warmup steps: %d",
+            args.lpips_net,
+            args.lpips_image_size,
+            args.lambda_lpips,
+            args.lpips_warmup_steps,
+        )
+    else:
+        LOGGER.info("LPIPS disabled because lambda_lpips is 0")
     loss_weights = LossWeights(
         distill=args.lambda_distill,
         reconstruction=args.lambda_rec,
         identity=args.lambda_id,
+        lpips=args.lambda_lpips,
         classifier=args.lambda_cls,
     )
 
@@ -451,8 +506,10 @@ def main(args=None):
                 sigma_schedule=sigma_schedule,
                 solver=solver,
                 classifier=classifier_for_loss,
+                lpips_model=lpips_model,
                 optimizer=optimizer,
                 loss_weights=loss_weights,
+                optimization_step=global_step + 1,
                 args=args,
                 device=device,
             )

@@ -1,0 +1,28 @@
+/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=AlexNet_Weights.IMAGENET1K_V1`. You can also use `weights=AlexNet_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+Traceback (most recent call last):
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/benchmark/run_benchmark.py", line 297, in <module>
+    main()
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/benchmark/run_benchmark.py", line 222, in main
+    purifier = CMPurifier.from_checkpoint(
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/purify/purifier.py", line 92, in from_checkpoint
+    model, alpha_schedule, sigma_schedule, train_args = load_purifier_from_checkpoint(
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/checkpoint.py", line 94, in load_purifier_from_checkpoint
+    checkpoint = load_checkpoint_dict(checkpoint_path, device)
+  File "/media02/ndthuc03/cm-purify-targeted-poisoning/consistency_model/cm_purifier/checkpoint.py", line 48, in load_checkpoint_dict
+    return torch.load(checkpoint_path, map_location=device)
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torch/serialization.py", line 1026, in load
+    return _load(opened_zipfile,
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torch/serialization.py", line 1438, in _load
+    result = unpickler.load()
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torch/serialization.py", line 1408, in persistent_load
+    typed_storage = load_tensor(dtype, nbytes, key, _maybe_decode_ascii(location))
+  File "/media02/ndthuc03/anaconda3/envs/purifying_poison/lib/python3.10/site-packages/torch/serialization.py", line 1373, in load_tensor
+    storage = zip_file.get_storage_from_record(name, numel, torch.UntypedStorage)._typed_storage()._untyped_storage
+RuntimeError: PytorchStreamReader failed reading file data/1096: file read failed

@@ -225,7 +225,16 @@ def main(argv=None) -> Path:
             device=device,
             seed=args.seed,
         )
-        LOGGER.info("Loaded purifier on %s with t_star=%d", purifier.device, purifier.t_star)
+        schedule = purifier.schedule_statistics()
+        LOGGER.info(
+            "Loaded purifier on %s | t_star=%d | alpha=%.6f | sigma=%.6f | snr=%.6f | noise seed=%d",
+            purifier.device,
+            schedule["t_star"],
+            schedule["alpha"],
+            schedule["sigma"],
+            schedule["snr"],
+            schedule["seed"],
+        )
     else:
         LOGGER.info("Skipping purification by request.")
 

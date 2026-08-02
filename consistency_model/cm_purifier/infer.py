@@ -29,6 +29,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--t-star", type=float, default=200)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--device", type=str, default="auto")
+    parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--use-student", action="store_true", help="Use student weights instead of EMA weights.")
     parser.add_argument("--recursive", action="store_true", help="Read images recursively from input directory.")
     return parser
@@ -69,6 +70,28 @@ def resolve_t_star(t_star: float, num_train_timesteps: int) -> int:
     return int(max(0, min(num_train_timesteps - 1, resolved)))
 
 
+# Purpose: Create a private random generator for reproducible purification noise.
+# Input: target device and optional requested seed.
+# Output: initialized torch generator and the concrete seed assigned to it.
+def make_noise_generator(device: torch.device, seed: int | None = None):
+    generator = torch.Generator(device=device)
+    if seed is None:
+        seed = int(generator.seed())
+    else:
+        generator.manual_seed(seed)
+    return generator, int(seed)
+
+
+# Purpose: Describe the DDPM corruption strength at one resolved timestep.
+# Input: timestep and alpha/sigma schedules.
+# Output: dictionary containing alpha, sigma, and signal-to-noise ratio.
+def timestep_statistics(t_star: int, alpha_schedule, sigma_schedule):
+    alpha = float(alpha_schedule[t_star].detach().cpu())
+    sigma = float(sigma_schedule[t_star].detach().cpu())
+    snr = (alpha * alpha) / max(sigma * sigma, 1e-12)
+    return {"alpha": alpha, "sigma": sigma, "snr": snr}
+
+
 # Purpose: Save a single CHW tensor in [0, 1] as an RGB image.
 # Input: tensor and destination path.
 # Output: none; image is written to disk.
@@ -80,12 +103,20 @@ def save_image_tensor(tensor, path: Path) -> None:
 
 
 # Purpose: Purify one batch of image tensors with one neural function evaluation.
-# Input: model, batch tensor, t-star integer, alpha schedule, sigma schedule, and device.
+# Input: model, batch, timestep, schedules, device, and optional private noise generator.
 # Output: purified batch tensor in [0, 1].
-def purify_batch(model, batch, t_star: int, alpha_schedule, sigma_schedule, device: torch.device):
+def purify_batch(
+    model,
+    batch,
+    t_star: int,
+    alpha_schedule,
+    sigma_schedule,
+    device: torch.device,
+    noise_generator: torch.Generator | None = None,
+):
     batch = batch.to(device)
     timesteps = torch.full((batch.shape[0],), t_star, dtype=torch.long, device=device)
-    noise = torch.randn_like(batch)
+    noise = torch.randn(batch.shape, dtype=batch.dtype, device=device, generator=noise_generator)
     x_t = q_sample(batch, timesteps, noise, alpha_schedule, sigma_schedule)
     with torch.no_grad():
         purified = model(x_t, timesteps, alpha_schedule, sigma_schedule)
@@ -112,16 +143,30 @@ def main(args=None) -> int:
     )
     image_size = int(train_args.get("image_size", 32))
     t_star = resolve_t_star(args.t_star, len(alpha_schedule))
+    noise_generator, noise_seed = make_noise_generator(device, args.seed)
+    timestep_stats = timestep_statistics(t_star, alpha_schedule, sigma_schedule)
+    print(
+        f"purification schedule: t_star={t_star} | alpha={timestep_stats['alpha']:.6f} | "
+        f"sigma={timestep_stats['sigma']:.6f} | snr={timestep_stats['snr']:.6f} | seed={noise_seed}"
+    )
 
     for start in range(0, len(image_paths), args.batch_size):
         paths = image_paths[start : start + args.batch_size]
         batch = torch.stack([load_image_tensor(path, image_size=image_size) for path in paths], dim=0)
-        purified = purify_batch(model, batch, t_star, alpha_schedule, sigma_schedule, device)
+        purified = purify_batch(
+            model,
+            batch,
+            t_star,
+            alpha_schedule,
+            sigma_schedule,
+            device,
+            noise_generator=noise_generator,
+        )
         for tensor, source_path in zip(purified, paths):
             relative = source_path.name if input_path.is_file() else source_path.relative_to(input_path)
             save_image_tensor(tensor, output_path / relative)
 
-    print(f"purified {len(image_paths)} images to {output_path} at t_star={t_star}")
+    print(f"purified {len(image_paths)} images to {output_path} at t_star={t_star} with seed={noise_seed}")
     return len(image_paths)
 
 

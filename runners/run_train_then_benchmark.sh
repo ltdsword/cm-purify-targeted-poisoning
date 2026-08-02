@@ -70,6 +70,10 @@ EMA_DECAY="${EMA_DECAY:-0.9999}"
 GAMMA_WB="${GAMMA_WB:-1.0}"
 GAMMA_BP="${GAMMA_BP:-1.0}"
 GAMMA_CLEAN="${GAMMA_CLEAN:-0.0}"
+LAMBDA_LPIPS="${LAMBDA_LPIPS:-0.0}"
+LPIPS_NET="${LPIPS_NET:-alex}"
+LPIPS_IMAGE_SIZE="${LPIPS_IMAGE_SIZE:-64}"
+LPIPS_WARMUP_STEPS="${LPIPS_WARMUP_STEPS:-2000}"
 SKIP_TRAIN="${SKIP_TRAIN:-0}"
 
 RUN_ID="${RUN_ID:-}"
@@ -77,6 +81,7 @@ ATTACK_FILTER="${ATTACK_FILTER:-all}"
 CASE_FILTER="${CASE_FILTER:-}"
 MAX_CASES="${MAX_CASES:-}"
 T_STAR="${T_STAR:-200}"
+T_STARS="${T_STARS:-}"
 BENCHMARK_BATCH_SIZE="${BENCHMARK_BATCH_SIZE:-64}"
 BENCHMARK_SEED="${BENCHMARK_SEED:-2026}"
 BENCHMARK_LOG_STEPS="${BENCHMARK_LOG_STEPS:-1024}"
@@ -106,6 +111,8 @@ echo "Pair directory: ${PAIR_DIR}"
 echo "Test directory: ${TEST_DIR}"
 echo "Checkpoint path: ${CHECKPOINT_PATH}"
 echo "Benchmark output directory: ${BENCHMARK_OUTPUT_DIR}"
+echo "LPIPS weight/network: ${LAMBDA_LPIPS}/${LPIPS_NET}"
+echo "LPIPS image size/warmup: ${LPIPS_IMAGE_SIZE}/${LPIPS_WARMUP_STEPS}"
 echo "Conda environment: ${ENV_NAME}"
 echo "Root requirements: ${ROOT_REQUIREMENTS}"
 echo "Logs directory: ${LOG_DIR}"
@@ -129,6 +136,7 @@ echo "  attack filter: ${ATTACK_FILTER}"
 echo "  case filter: ${CASE_FILTER:-<none>}"
 echo "  max cases: ${MAX_CASES:-<none>}"
 echo "  t star: ${T_STAR}"
+echo "  t star sweep: ${T_STARS:-<disabled>}"
 echo "  batch size: ${BENCHMARK_BATCH_SIZE}"
 echo "  seed: ${BENCHMARK_SEED}"
 echo "  log steps: ${BENCHMARK_LOG_STEPS}"
@@ -268,6 +276,10 @@ else
         --gamma-wb "${GAMMA_WB}"
         --gamma-bp "${GAMMA_BP}"
         --gamma-clean "${GAMMA_CLEAN}"
+        --lambda-lpips "${LAMBDA_LPIPS}"
+        --lpips-net "${LPIPS_NET}"
+        --lpips-image-size "${LPIPS_IMAGE_SIZE}"
+        --lpips-warmup-steps "${LPIPS_WARMUP_STEPS}"
     )
     "${ENV_PYTHON}" "${TRAIN_ARGS[@]}"
 fi
@@ -277,44 +289,70 @@ if [[ ! -f "${CHECKPOINT_PATH}" && "${SKIP_PURIFY}" != "1" ]]; then
     exit 1
 fi
 
-BENCHMARK_ARGS=(
-    -u -m benchmark.run_benchmark
-    --checkpoint "${CHECKPOINT_PATH}"
-    --test-dir "${TEST_DIR}"
-    --output-dir "${BENCHMARK_OUTPUT_DIR}"
-    --attack-filter "${ATTACK_FILTER}"
-    --t-star "${T_STAR}"
-    --batch-size "${BENCHMARK_BATCH_SIZE}"
-    --device cuda
-    --seed "${BENCHMARK_SEED}"
-    --log-steps "${BENCHMARK_LOG_STEPS}"
-    --bp-victim-net "${BP_VICTIM_NET}"
-    --bp-checkpoint-name "${BP_CHECKPOINT_NAME}"
-    --bp-retrain-epochs "${BP_RETRAIN_EPOCHS}"
-    --bp-retrain-bsize "${BP_RETRAIN_BSIZE}"
-)
+if [[ -n "${T_STARS}" ]]; then
+    NORMALIZED_T_STARS="${T_STARS//,/ }"
+    read -r -a BENCHMARK_T_STAR_VALUES <<< "${NORMALIZED_T_STARS}"
+else
+    BENCHMARK_T_STAR_VALUES=("${T_STAR}")
+fi
 
-if [[ -n "${RUN_ID}" ]]; then
-    BENCHMARK_ARGS+=(--run-id "${RUN_ID}")
+if [[ "${#BENCHMARK_T_STAR_VALUES[@]}" -eq 0 ]]; then
+    echo "ERROR: no benchmark timesteps were configured." >&2
+    exit 1
 fi
-if [[ -n "${CASE_FILTER}" ]]; then
-    BENCHMARK_ARGS+=(--case-filter "${CASE_FILTER}")
-fi
-if [[ -n "${MAX_CASES}" ]]; then
-    BENCHMARK_ARGS+=(--max-cases "${MAX_CASES}")
-fi
-append_flag_if_enabled "${SKIP_PURIFY}" "--skip-purify" BENCHMARK_ARGS
-append_flag_if_enabled "${SKIP_RETRAIN}" "--skip-retrain" BENCHMARK_ARGS
-append_flag_if_enabled "${OVERWRITE_ARTIFACTS}" "--overwrite-artifacts" BENCHMARK_ARGS
-if [[ -n "${WB_EPOCHS}" ]]; then
-    BENCHMARK_ARGS+=(--wb-epochs "${WB_EPOCHS}")
-fi
-append_flag_if_enabled "${WB_DRYRUN}" "--wb-dryrun" BENCHMARK_ARGS
 
-echo "=============================="
-echo "2. RUNNING BENCHMARK IN SAME JOB..."
-echo "=============================="
-"${ENV_PYTHON}" "${BENCHMARK_ARGS[@]}"
+BENCHMARK_INDEX=0
+for CURRENT_T_STAR in "${BENCHMARK_T_STAR_VALUES[@]}"; do
+    BENCHMARK_INDEX=$((BENCHMARK_INDEX + 1))
+    CURRENT_RUN_ID="${RUN_ID}"
+    if [[ -n "${T_STARS}" ]]; then
+        if [[ ! "${CURRENT_T_STAR}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: T_STARS accepts integer DDPM timesteps, got '${CURRENT_T_STAR}'." >&2
+            exit 1
+        fi
+        printf -v CURRENT_RUN_ID "t_star_%03d" "$((10#${CURRENT_T_STAR}))"
+    fi
+
+    BENCHMARK_ARGS=(
+        -u -m benchmark.run_benchmark
+        --checkpoint "${CHECKPOINT_PATH}"
+        --test-dir "${TEST_DIR}"
+        --output-dir "${BENCHMARK_OUTPUT_DIR}"
+        --attack-filter "${ATTACK_FILTER}"
+        --t-star "${CURRENT_T_STAR}"
+        --batch-size "${BENCHMARK_BATCH_SIZE}"
+        --device cuda
+        --seed "${BENCHMARK_SEED}"
+        --log-steps "${BENCHMARK_LOG_STEPS}"
+        --bp-victim-net "${BP_VICTIM_NET}"
+        --bp-checkpoint-name "${BP_CHECKPOINT_NAME}"
+        --bp-retrain-epochs "${BP_RETRAIN_EPOCHS}"
+        --bp-retrain-bsize "${BP_RETRAIN_BSIZE}"
+    )
+
+    if [[ -n "${CURRENT_RUN_ID}" ]]; then
+        BENCHMARK_ARGS+=(--run-id "${CURRENT_RUN_ID}")
+    fi
+    if [[ -n "${CASE_FILTER}" ]]; then
+        BENCHMARK_ARGS+=(--case-filter "${CASE_FILTER}")
+    fi
+    if [[ -n "${MAX_CASES}" ]]; then
+        BENCHMARK_ARGS+=(--max-cases "${MAX_CASES}")
+    fi
+    append_flag_if_enabled "${SKIP_PURIFY}" "--skip-purify" BENCHMARK_ARGS
+    append_flag_if_enabled "${SKIP_RETRAIN}" "--skip-retrain" BENCHMARK_ARGS
+    append_flag_if_enabled "${OVERWRITE_ARTIFACTS}" "--overwrite-artifacts" BENCHMARK_ARGS
+    if [[ -n "${WB_EPOCHS}" ]]; then
+        BENCHMARK_ARGS+=(--wb-epochs "${WB_EPOCHS}")
+    fi
+    append_flag_if_enabled "${WB_DRYRUN}" "--wb-dryrun" BENCHMARK_ARGS
+
+    echo "=============================="
+    echo "2.${BENCHMARK_INDEX}. RUNNING BENCHMARK AT T_STAR=${CURRENT_T_STAR} IN SAME JOB..."
+    echo "Output run ID: ${CURRENT_RUN_ID:-<auto>}"
+    echo "=============================="
+    "${ENV_PYTHON}" "${BENCHMARK_ARGS[@]}"
+done
 
 echo "=============================="
 echo "DONE! Checkpoint: ${CHECKPOINT_PATH}"

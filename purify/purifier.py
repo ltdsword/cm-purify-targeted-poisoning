@@ -17,7 +17,12 @@ from PIL import Image
 
 from consistency_model.cm_purifier.checkpoint import load_purifier_from_checkpoint
 from consistency_model.cm_purifier.dataset import load_image_tensor
-from consistency_model.cm_purifier.infer import resolve_t_star, save_image_tensor
+from consistency_model.cm_purifier.infer import (
+    make_noise_generator,
+    resolve_t_star,
+    save_image_tensor,
+    timestep_statistics,
+)
 from consistency_model.cm_purifier.schedules import minus_one_to_one_to_zero_one, q_sample
 
 
@@ -30,17 +35,6 @@ def resolve_device(device: str | torch.device) -> torch.device:
     if device == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(device)
-
-
-# Purpose: Seed torch RNGs used for the DDPM noise draw during purification.
-# Input: optional integer seed.
-# Output: none; global torch RNG state is updated when seed is provided.
-def seed_torch(seed: int | None) -> None:
-    if seed is None:
-        return
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
 
 
 # Purpose: Convert a PIL image to a CHW tensor in the requested purifier range.
@@ -79,6 +73,8 @@ class CMPurifier:
     image_size: int
     t_star: int
     device: torch.device
+    noise_seed: int
+    noise_generator: torch.Generator
 
     # Purpose: Load a trained CM purifier from a .pth checkpoint.
     # Input: checkpoint path, t-star, device, optional seed, and student/EMA selector.
@@ -93,7 +89,6 @@ class CMPurifier:
         use_student: bool = False,
     ) -> "CMPurifier":
         device = resolve_device(device)
-        seed_torch(seed)
         model, alpha_schedule, sigma_schedule, train_args = load_purifier_from_checkpoint(
             checkpoint_path,
             device=device,
@@ -101,6 +96,7 @@ class CMPurifier:
         )
         image_size = int(train_args.get("image_size", 32))
         resolved_t_star = resolve_t_star(t_star, len(alpha_schedule))
+        noise_generator, noise_seed = make_noise_generator(device, seed)
         return cls(
             model=model,
             alpha_schedule=alpha_schedule,
@@ -109,7 +105,16 @@ class CMPurifier:
             image_size=image_size,
             t_star=resolved_t_star,
             device=device,
+            noise_seed=noise_seed,
+            noise_generator=noise_generator,
         )
+
+    # Purpose: Report the exact DDPM noise strength used by this purifier.
+    # Input: no arguments beyond the initialized purifier.
+    # Output: dictionary with timestep, alpha, sigma, SNR, and private RNG seed.
+    def schedule_statistics(self) -> dict:
+        statistics = timestep_statistics(self.t_star, self.alpha_schedule, self.sigma_schedule)
+        return {"t_star": self.t_star, "seed": self.noise_seed, **statistics}
 
     # Purpose: Convert a tensor batch into the purifier's expected [-1, 1] range.
     # Input: CHW or BCHW tensor and declared input range.
@@ -139,7 +144,12 @@ class CMPurifier:
         batch, single_image = self._prepare_batch(images, input_range=input_range)
         batch = batch.to(self.device)
         timesteps = torch.full((batch.shape[0],), self.t_star, dtype=torch.long, device=self.device)
-        noise = torch.randn(batch.shape, dtype=batch.dtype, device=self.device)
+        noise = torch.randn(
+            batch.shape,
+            dtype=batch.dtype,
+            device=self.device,
+            generator=self.noise_generator,
+        )
         x_t = q_sample(batch, timesteps, noise, self.alpha_schedule, self.sigma_schedule)
         with torch.no_grad():
             purified = self.model(x_t, timesteps, self.alpha_schedule, self.sigma_schedule)
