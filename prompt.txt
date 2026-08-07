@@ -1,0 +1,16 @@
+Please read the project structure carefully. 
+
+The goal of this prompt is to produce a detail, comprehensive and complete report about:
+
+- Threat model
+- Brief about three kind of poison/attack: WB, BP and Narcissus. You can read @ProposedMethod, @poison-gradient-matching, @BullseyePoison 
+- Proposed Method
+- The result we have achieved
+- Challenge during excuting the method and the resolution: the clean label accuracy drops drastically with WB => LPIPS
+- Next steps
+
+Pls phrase them and make a ready-made version for that one. 
+You can consider the structure of the docuemnt @Summary__GDMP_on_poison_images.pdf; i want the format and the structure of our report to be like this.
+
+Read all the codebase for reference. Gather the information for each section.
+--> write the report in latex, start with \begin{document}
