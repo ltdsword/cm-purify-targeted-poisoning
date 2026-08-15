@@ -16,7 +16,7 @@ from .dataset import inspect_pair_directory
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run lightweight checks for cm_purifier.")
     parser.add_argument("--pair-dir", type=str, default="dataset_generation/datasets/train")
-    parser.add_argument("--expected-total", type=int, default=30000)
+    parser.add_argument("--expected-total", type=int, default=40000)
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--max-batches", type=int, default=2)
     parser.add_argument("--skip-training", action="store_true")
@@ -44,11 +44,11 @@ def run_dataset_checks(pair_dir: str, expected_total: int):
     summary = inspect_pair_directory(pair_dir)
     if summary["total"] != expected_total:
         raise AssertionError(f"Expected {expected_total} pairs, found {summary['total']}")
-    expected_attacks = {"bp": 10000, "clean": 10000, "wb": 10000}
-    if expected_total == 30000 and summary["attacks"] != expected_attacks:
+    expected_attacks = {"bp": 10000, "clean": 10000, "ns": 10000, "wb": 10000}
+    if expected_total == 40000 and summary["attacks"] != expected_attacks:
         raise AssertionError(f"Unexpected attack counts: {summary['attacks']}")
-    if expected_total == 30000:
-        expected_labels = {label: 3000 for label in range(10)}
+    if expected_total == 40000:
+        expected_labels = {label: 4000 for label in range(10)}
         if summary["labels"] != expected_labels:
             raise AssertionError(f"Unexpected label counts: {summary['labels']}")
     return summary

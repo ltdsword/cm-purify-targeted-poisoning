@@ -1,4 +1,5 @@
 import os
+import json
 import pickle
 import numpy as np
 import torchvision
@@ -11,12 +12,25 @@ from PIL import Image
 # Directory configurations
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REPO_DIR = os.path.dirname(BASE_DIR)
+# Keep the repository ahead of this ``scripts`` directory. Otherwise this file
+# shadows the ``dataset_generation`` namespace when launched by path.
+sys.path.insert(0, REPO_DIR)
+
+from dataset_generation.Narcissus.dataset_builder import (
+    create_ns_setup_file,
+    export_ns_cm_bank,
+    export_ns_eval_cases,
+    generate_ns_triggers,
+    validate_ns_artifacts,
+)
+
 DATA_ROOT = os.path.join(BASE_DIR, "datasets")
 CONFIG_DIR = os.path.join(BASE_DIR, "configs")
 SLURM_DIR = os.path.join(BASE_DIR, "slurm_jobs")
 BP_ROOT = os.path.join(BASE_DIR, "BullseyePoison")
 BP_DATA_DIR = os.path.join(BP_ROOT, "datasets")
 BP_SPLIT_PATH = os.path.join(BP_DATA_DIR, "CIFAR10_TRAIN_Split.pth")
+NS_SETUP_PATH = os.path.join(CONFIG_DIR, "ns_benchmark_setups.json")
 
 # Final destination folders where paired datasets will be saved
 TRAIN_CLEAN_DIR = os.path.join(DATA_ROOT, "train", "clean")
@@ -250,6 +264,8 @@ def setup_clean_datasets():
         pickle.dump(wb_setups, f)
     with open(os.path.join(CONFIG_DIR, 'bp_benchmark_setups.pickle'), 'wb') as f:
         pickle.dump(bp_setups, f)
+
+    create_ns_setup_file(train_set.targets, NS_SETUP_PATH)
         
     print("Clean images explicitly verified and saved!")
 
@@ -453,9 +469,133 @@ def craft_bp():
         else:
             raise FileNotFoundError(f"Expected BP poisons were not found at {poisons_file}")
 
+
+def parse_ns_classes(value):
+    if value is None or value.strip().lower() in {"", "all"}:
+        return list(range(10))
+    classes = sorted({int(token.strip()) for token in value.split(",") if token.strip()})
+    if not classes or min(classes) < 0 or max(classes) > 9:
+        raise ValueError(f"Invalid --ns-classes value: {value!r}")
+    return classes
+
+
+def run_narcissus_stage(args):
+    classes = parse_ns_classes(args.ns_classes)
+    profile = args.ns_profile
+    if profile == "smoke" and args.ns_classes in {None, "", "all"}:
+        classes = [2]
+    pood_root = args.pood_root or os.environ.get("NARCISSUS_POOD_ROOT")
+    trigger_kinds = ["train", "eval"] if args.ns_trigger_kind == "both" else [args.ns_trigger_kind]
+    ns_train_clean_dir = TRAIN_CLEAN_DIR if profile == "final" else os.path.join(DATA_ROOT, "train_smoke", "clean")
+    ns_train_poison_dir = TRAIN_POISON_DIR if profile == "final" else os.path.join(DATA_ROOT, "train_smoke", "poisons")
+    ns_test_root = TEST_DIR if profile == "final" else os.path.join(DATA_ROOT, "test_smoke")
+    if profile == "final":
+        required = {
+            "--ns-epsilon": (args.ns_epsilon, 8.0 / 255.0),
+            "--ns-surrogate-epochs": (args.ns_surrogate_epochs, 200),
+            "--ns-warmup-epochs": (args.ns_warmup_epochs, 5),
+            "--ns-trigger-rounds": (args.ns_trigger_rounds, 1000),
+        }
+        incompatible = [
+            f"{name}={actual} (required {expected})"
+            for name, (actual, expected) in required.items()
+            if actual is not None and abs(float(actual) - float(expected)) > 1e-12
+        ]
+        if incompatible:
+            raise ValueError("The final Narcissus profile is locked: " + ", ".join(incompatible))
+
+    if args.mode in {"craft_ns_triggers", "craft_ns"}:
+        if not pood_root:
+            raise ValueError(
+                "Narcissus trigger generation requires --pood-root or NARCISSUS_POOD_ROOT "
+                "pointing to tiny-imagenet-200/train."
+            )
+        if profile == "smoke":
+            surrogate_epochs = args.ns_surrogate_epochs or 1
+            warmup_epochs = args.ns_warmup_epochs or 1
+            trigger_rounds = args.ns_trigger_rounds or 1
+        else:
+            surrogate_epochs = args.ns_surrogate_epochs or 200
+            warmup_epochs = args.ns_warmup_epochs or 5
+            trigger_rounds = args.ns_trigger_rounds or 1000
+        generate_ns_triggers(
+            setup_path=NS_SETUP_PATH,
+            data_root=DATA_ROOT,
+            narcissus_root=os.path.join(BASE_DIR, "Narcissus"),
+            cifar_root=DATA_ROOT,
+            pood_root=pood_root,
+            classes=classes,
+            kinds=trigger_kinds,
+            device=args.ns_device,
+            surrogate_epochs=surrogate_epochs,
+            warmup_epochs=warmup_epochs,
+            trigger_rounds=trigger_rounds,
+            batch_size=args.ns_batch_size,
+            num_workers=args.ns_num_workers,
+            checkpoint_interval=args.ns_checkpoint_interval,
+            epsilon=args.ns_epsilon,
+            profile=profile,
+        )
+
+    if args.mode in {"craft_ns_bank", "craft_ns"}:
+        export_ns_cm_bank(
+            setup_path=NS_SETUP_PATH,
+            data_root=DATA_ROOT,
+            train_clean_dir=ns_train_clean_dir,
+            train_poison_dir=ns_train_poison_dir,
+            classes=classes,
+            epsilon=args.ns_epsilon,
+            profile=profile,
+        )
+
+    if args.mode in {"craft_ns_eval", "craft_ns"}:
+        if args.mode == "craft_ns" and set(trigger_kinds) != {"train", "eval"}:
+            raise ValueError("--mode craft_ns requires --ns-trigger-kind both")
+        export_ns_eval_cases(
+            setup_path=NS_SETUP_PATH,
+            data_root=DATA_ROOT,
+            test_root=ns_test_root,
+            classes=classes,
+            profile=profile,
+            epsilon=args.ns_epsilon,
+        )
+
+    if args.mode in {"validate_ns", "craft_ns"}:
+        summary = validate_ns_artifacts(
+            setup_path=NS_SETUP_PATH,
+            data_root=DATA_ROOT,
+            train_clean_dir=ns_train_clean_dir,
+            train_poison_dir=ns_train_poison_dir,
+            test_root=ns_test_root,
+            classes=classes,
+            profile=profile,
+            epsilon=args.ns_epsilon,
+        )
+        print(json.dumps(summary, indent=2, sort_keys=True))
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', type=str, required=True, choices=['setup_clean', 'craft_wb', 'craft_bp'])
+    parser.add_argument(
+        '--mode',
+        type=str,
+        required=True,
+        choices=[
+            'setup_clean', 'craft_wb', 'craft_bp', 'craft_ns_triggers',
+            'craft_ns_bank', 'craft_ns_eval', 'validate_ns', 'craft_ns'
+        ],
+    )
+    parser.add_argument('--pood-root', type=str, default=None)
+    parser.add_argument('--ns-classes', type=str, default='all')
+    parser.add_argument('--ns-trigger-kind', choices=['train', 'eval', 'both'], default='both')
+    parser.add_argument('--ns-profile', choices=['smoke', 'final'], default='final')
+    parser.add_argument('--ns-device', type=str, default='cuda')
+    parser.add_argument('--ns-epsilon', type=float, default=8.0 / 255.0)
+    parser.add_argument('--ns-surrogate-epochs', type=int, default=None)
+    parser.add_argument('--ns-warmup-epochs', type=int, default=None)
+    parser.add_argument('--ns-trigger-rounds', type=int, default=None)
+    parser.add_argument('--ns-batch-size', type=int, default=350)
+    parser.add_argument('--ns-num-workers', type=int, default=8)
+    parser.add_argument('--ns-checkpoint-interval', type=int, default=10)
     args = parser.parse_args()
     
     if args.mode == 'setup_clean':
@@ -464,3 +604,5 @@ if __name__ == '__main__':
         craft_wb()
     elif args.mode == 'craft_bp':
         craft_bp()
+    else:
+        run_narcissus_stage(args)

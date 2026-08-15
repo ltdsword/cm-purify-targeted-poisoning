@@ -1,8 +1,9 @@
-"""Case discovery and metadata lookup for WB/BP benchmark runs."""
+"""Case discovery and metadata lookup for WB/BP/NS benchmark runs."""
 
 from __future__ import annotations
 
 import fnmatch
+import json
 import pickle
 import re
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from typing import Dict, Iterable, List, Optional
 
 WB_CASE_PATTERN = re.compile(r"^WB_c(?P<class_idx>[0-9]+)$")
 BP_CASE_PATTERN = re.compile(r"^BP_c(?P<class_idx>[0-9]+)_g(?P<group_idx>[0-9]+)$")
+NS_CASE_PATTERN = re.compile(r"^NS_c(?P<class_idx>[0-9]+)$")
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,9 @@ def parse_case_name(case_name: str) -> tuple[str, int, Optional[int]]:
     bp_match = BP_CASE_PATTERN.match(case_name)
     if bp_match:
         return "BP", int(bp_match.group("class_idx")), int(bp_match.group("group_idx"))
+    ns_match = NS_CASE_PATTERN.match(case_name)
+    if ns_match:
+        return "NS", int(ns_match.group("class_idx")), None
     raise ValueError(f"Unsupported benchmark case name: {case_name}")
 
 
@@ -117,6 +122,10 @@ def bp_poison_name(class_idx: int, group_idx: int, base_index: int) -> str:
     return f"bp_c{class_idx}_g{group_idx}_{base_index}.png"
 
 
+def ns_poison_name(class_idx: int, base_index: int) -> str:
+    return f"ns_c{class_idx}_{base_index}.png"
+
+
 # Purpose: Discover benchmark cases and attach original attack setup metadata.
 # Input: test root, setup pickle paths, attack/case filters, and optional max cases.
 # Output: sorted list of BenchmarkCase objects.
@@ -132,9 +141,9 @@ def discover_benchmark_cases(
     if not test_dir.is_dir():
         raise FileNotFoundError(f"Missing benchmark test directory: {test_dir}")
 
-    wb_setups = load_setup_pickle(wb_config)
-    bp_setups = load_setup_pickle(bp_config)
     requested_attack = attack_filter.upper()
+    wb_setups = load_setup_pickle(wb_config) if requested_attack in {"ALL", "WB"} else []
+    bp_setups = load_setup_pickle(bp_config) if requested_attack in {"ALL", "BP"} else []
     cases: List[BenchmarkCase] = []
 
     for case_dir in sorted(path for path in test_dir.iterdir() if path.is_dir()):
@@ -151,10 +160,21 @@ def discover_benchmark_cases(
             continue
         if attack == "WB":
             setup_index, setup = find_wb_setup(wb_setups, class_idx)
-        else:
+        elif attack == "BP":
             if group_idx is None:
                 raise ValueError(f"BP case is missing group index: {case_dir.name}")
             setup_index, setup = find_bp_setup(bp_setups, class_idx, group_idx)
+        else:
+            metadata_path = case_dir / "metadata.json"
+            indices_path = case_dir / "poison_indices.json"
+            if not metadata_path.is_file() or not indices_path.is_file():
+                raise FileNotFoundError(f"NS case is missing metadata or poison indices: {case_dir}")
+            setup = json.loads(metadata_path.read_text(encoding="utf-8"))
+            setup["base indices"] = json.loads(indices_path.read_text(encoding="utf-8"))
+            setup["target class"] = int(setup["target_class"])
+            setup["target index"] = -1
+            setup["base class"] = int(setup["target_class"])
+            setup_index = -1
         cases.append(
             BenchmarkCase(
                 name=case_dir.name,
@@ -189,5 +209,6 @@ def summarize_cases(cases: Iterable[BenchmarkCase]) -> Dict[str, object]:
         "total": len(cases),
         "WB": sum(1 for case in cases if case.attack == "WB"),
         "BP": sum(1 for case in cases if case.attack == "BP"),
+        "NS": sum(1 for case in cases if case.attack == "NS"),
         "names": [case.name for case in cases],
     }

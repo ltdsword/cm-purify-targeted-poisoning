@@ -39,6 +39,17 @@ ENV_NAME="purifying_poison"
 JOB_ID="${SLURM_JOB_ID:-local_$(date +%Y%m%d_%H%M%S)_$$}"
 MAIN_LOG="${LOG_DIR}/poison_pipeline_${JOB_ID}.log"
 ERR_LOG="${LOG_DIR}/poison_pipeline_err_${JOB_ID}.log"
+RUN_WB="${RUN_WB:-1}"
+RUN_BP="${RUN_BP:-1}"
+RUN_NARCISSUS="${RUN_NARCISSUS:-1}"
+NARCISSUS_POOD_ROOT="${NARCISSUS_POOD_ROOT:-}"
+NS_CLASSES="${NS_CLASSES:-all}"
+NS_STAGE="${NS_STAGE:-all}"
+NS_PROFILE="${NS_PROFILE:-final}"
+NS_TRIGGER_KIND="${NS_TRIGGER_KIND:-both}"
+NS_CHECKPOINT_INTERVAL="${NS_CHECKPOINT_INTERVAL:-10}"
+NS_BATCH_SIZE="${NS_BATCH_SIZE:-350}"
+NS_NUM_WORKERS="${NS_NUM_WORKERS:-8}"
 
 mkdir -p "${LOG_DIR}"
 exec > >(tee -a "${MAIN_LOG}") 2> >(tee -a "${ERR_LOG}" >&2)
@@ -54,6 +65,7 @@ echo "Started at: $(date -Is)"
 echo "SLURM job GPUs: ${SLURM_JOB_GPUS:-<unset>}"
 echo "SLURM step GPUs: ${SLURM_STEP_GPUS:-<unset>}"
 echo "CUDA_VISIBLE_DEVICES before setup: ${CUDA_VISIBLE_DEVICES:-<unset>}"
+echo "Narcissus: run=${RUN_NARCISSUS}, stage=${NS_STAGE}, classes=${NS_CLASSES}, profile=${NS_PROFILE}"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
     nvidia-smi || true
@@ -140,12 +152,49 @@ echo "=============================="
 echo "=============================="
 echo "2. GENERATING WITCHES BREW POISONS..."
 echo "=============================="
-"${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_wb
+if [[ "${RUN_WB}" == "1" ]]; then
+    "${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_wb
+fi
 
 echo "=============================="
 echo "3. GENERATING BULLSEYE POLYTOPE POISONS..."
 echo "=============================="
-"${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_bp
+if [[ "${RUN_BP}" == "1" ]]; then
+    "${ENV_PYTHON}" -u "${SCRIPT_PATH}" --mode craft_bp
+fi
+
+if [[ "${RUN_NARCISSUS}" == "1" ]]; then
+    case "${NS_STAGE}" in
+        triggers) NS_MODE="craft_ns_triggers" ;;
+        bank) NS_MODE="craft_ns_bank" ;;
+        eval) NS_MODE="craft_ns_eval" ;;
+        validate) NS_MODE="validate_ns" ;;
+        all) NS_MODE="craft_ns" ;;
+        *) echo "ERROR: NS_STAGE must be triggers, bank, eval, validate, or all." >&2; exit 1 ;;
+    esac
+    if [[ "${NS_STAGE}" == "triggers" || "${NS_STAGE}" == "all" ]]; then
+        if [[ -z "${NARCISSUS_POOD_ROOT}" ]]; then
+            echo "ERROR: set NARCISSUS_POOD_ROOT to the Tiny ImageNet ImageFolder train directory." >&2
+            exit 1
+        fi
+        NS_POOD_ARGS=(--pood-root "${NARCISSUS_POOD_ROOT}")
+    else
+        NS_POOD_ARGS=()
+    fi
+    echo "=============================="
+    echo "4. RUNNING NARCISSUS STAGE ${NS_STAGE}..."
+    echo "=============================="
+    "${ENV_PYTHON}" -u "${SCRIPT_PATH}" \
+        --mode "${NS_MODE}" \
+        --ns-classes "${NS_CLASSES}" \
+        --ns-profile "${NS_PROFILE}" \
+        --ns-trigger-kind "${NS_TRIGGER_KIND}" \
+        --ns-device cuda \
+        --ns-checkpoint-interval "${NS_CHECKPOINT_INTERVAL}" \
+        --ns-batch-size "${NS_BATCH_SIZE}" \
+        --ns-num-workers "${NS_NUM_WORKERS}" \
+        "${NS_POOD_ARGS[@]}"
+fi
 
 echo "=============================="
 echo "DONE! Results are in ${DATASET_GENERATION_DIR}/datasets/"

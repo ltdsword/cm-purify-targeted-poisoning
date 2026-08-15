@@ -62,6 +62,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gamma-clean", type=float, default=0.0)
     parser.add_argument("--gamma-wb", type=float, default=1.0)
     parser.add_argument("--gamma-bp", type=float, default=1.0)
+    parser.add_argument("--gamma-ns", type=float, default=1.0)
     parser.add_argument("--lambda-distill", type=float, default=1.0)
     parser.add_argument("--lambda-rec", type=float, default=1.0)
     parser.add_argument("--lambda-id", type=float, default=1.0)
@@ -205,6 +206,7 @@ def log_run_configuration(args, device: torch.device, dataset_summary: Dict[str,
         "gamma_clean": args.gamma_clean,
         "gamma_wb": args.gamma_wb,
         "gamma_bp": args.gamma_bp,
+        "gamma_ns": args.gamma_ns,
         "lambda_distill": args.lambda_distill,
         "lambda_rec": args.lambda_rec,
         "lambda_id": args.lambda_id,
@@ -321,10 +323,11 @@ def build_schedules(args, device: torch.device):
 # Input: attack id tensor and gamma arguments.
 # Output: broadcastable gamma tensor with shape [B, 1, 1, 1].
 def build_gamma_tensor(attack_ids, args):
-    gamma_lookup = torch.zeros(3, device=attack_ids.device, dtype=torch.float32)
+    gamma_lookup = torch.zeros(len(ATTACK_TO_ID), device=attack_ids.device, dtype=torch.float32)
     gamma_lookup[ATTACK_TO_ID["clean"]] = args.gamma_clean
     gamma_lookup[ATTACK_TO_ID["wb"]] = args.gamma_wb
     gamma_lookup[ATTACK_TO_ID["bp"]] = args.gamma_bp
+    gamma_lookup[ATTACK_TO_ID["ns"]] = args.gamma_ns
     return gamma_lookup.gather(0, attack_ids).view(-1, 1, 1, 1)
 
 

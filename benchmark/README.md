@@ -21,7 +21,7 @@ For each held-out case in `dataset_generation/datasets/test`:
 The benchmark purifies the whole train set because the realistic setting does
 not know which images are poisoned.
 
-## WB And BP Are Different
+## Attack-specific evaluation
 
 WB and BP do not share retraining code.
 
@@ -65,6 +65,10 @@ where BP poisons are generated with `--substitute-nets ResNet18` and
 BP setup indices are class-relative in the compact split, so the benchmark maps
 them to flat split indices before building the BP retraining dataset.
 
+Narcissus cases use `NS_c<class>`. For each case the benchmark replaces the 500 stored target-class indices in the official 50,000-image CIFAR-10 training set. It trains independent CIFAR ResNet-18 victims from scratch for poisoned and CM-defended data using the same seed and configuration: SGD (learning rate 0.1, momentum 0.9, weight decay `5e-4`), batch size 128, 200 epochs, milestones 100 and 150, and `RandomCrop(32, padding=4)`. Victim checkpoints resume independently under `victim_checkpoints/poison/` and `victim_checkpoints/purified/`.
+
+NS reports natural accuracy on all 10,000 clean queries, target-class accuracy on 1,000 clean target-class queries, and ASR on 9,000 triggered non-target queries. The same held-out trigger is used for train poisons and triggered queries at scale 1.0. Test queries are never purified or magnified.
+
 ## Output
 
 Default root:
@@ -82,6 +86,7 @@ Per case:
   purify/<original_poison_filename>.png
   target/<target_filename>.png
   summary.json
+  victim_checkpoints/          # NS only
 ```
 
 Run-level metrics:
@@ -90,6 +95,7 @@ Run-level metrics:
 benchmark_results.csv
 benchmark_results.jsonl
 run_config.json
+narcissus_summary.json         # when NS results are available
 ```
 
 CSV columns:
@@ -103,6 +109,8 @@ Target Acc (Poison)
 Clean Acc (Purified)
 Target Acc (Purified)
 ```
+
+The legacy columns remain unchanged. Additional standardized natural-accuracy, attack-success/ASR, target-class-accuracy, and purification-timing columns are appended. Timing covers only the full load-purify-write phase and records image count, wall time, throughput, batch statistics, device, timestep, inference seed, and purifier checkpoint hash. Reused completed artifacts retain their original measurements and are marked `reused`.
 
 ## Slurm Usage
 
@@ -148,8 +156,8 @@ CHECKPOINT_PATH
 TEST_DIR
 OUTPUT_DIR
 RUN_ID
-ATTACK_FILTER        all, WB, or BP
-CASE_FILTER          comma-separated names/globs, e.g. WB_c0,BP_c0_g0
+ATTACK_FILTER        all, WB, BP, or NS
+CASE_FILTER          comma-separated names/globs, e.g. WB_c0,BP_c0_g0,NS_c2
 MAX_CASES
 T_STAR
 BATCH_SIZE           default 64 for full-train purification
@@ -164,7 +172,24 @@ BP_VICTIM_NET        default ResNet18
 BP_CHECKPOINT_NAME   default ckpt-%s-4800.t7
 BP_RETRAIN_EPOCHS    default 60
 BP_RETRAIN_BSIZE     default 64
+NS_PROFILE           final or smoke
+NS_VICTIM_EPOCHS     default 200 final, 2 smoke
+NS_VICTIM_BATCH_SIZE default 128
+NS_VICTIM_WORKERS    default 8
+NS_VICTIM_SEED       locked to 62000 in final mode
+NS_VICTIM_CHECKPOINT_INTERVAL default 1 epoch
+NS_VICTIM_RESUME     default 1; set 0 to ignore an existing victim checkpoint
+NS_TRIGGERED_TEST_LIMIT unset for final; smoke defaults to 500
 ```
+
+Example diagnostic run (not reportable):
+
+```bash
+ATTACK_FILTER=NS CASE_FILTER=NS_c2 NS_PROFILE=smoke TEST_DIR=dataset_generation/datasets/test_smoke RUN_ID=ns_smoke sbatch benchmark/run_benchmark.sh
+```
+
+For reportable results use `NS_PROFILE=final`, all ten NS cases, 200 victim epochs, and all 9,000 triggered queries per class.
+Set a stable `RUN_ID` when resubmitting an expired job; materialized data, purification timing, and the two victim checkpoint trees are then discovered under the same run directory and resumed. A new automatic Slurm run ID intentionally starts a separate run.
 
 Python entrypoint:
 

@@ -42,8 +42,9 @@ def _require_torch():
 
 
 # Purpose: Infer the purifier attack type from a generated pair filename.
-# Input: a PNG filename such as wb_c2_24919.png, bp_c0_g0_1500.png, or clean_c1_1.png.
-# Output: one of clean, wb, or bp.
+# Input: a PNG filename such as wb_c2_24919.png, bp_c0_g0_1500.png,
+# ns_c5_t2_12345.png, or clean_c1_1.png.
+# Output: one of clean, wb, bp, or ns.
 def parse_attack_type(filename: str) -> str:
     prefix = filename.split("_", 1)[0].lower()
     if prefix not in ATTACK_TO_ID:

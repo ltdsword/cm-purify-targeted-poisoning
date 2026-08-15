@@ -6,6 +6,7 @@ The method is designed for targeted clean-label data poisoning attacks, especial
 
 - **Witches' Brew / Gradient Matching:** a clean-label targeted poisoning attack for training-from-scratch settings.
 - **Bullseye Polytope:** a clean-label feature-space poisoning attack for transfer-learning settings.
+- **Narcissus:** a clean-label class-oriented backdoor attack using a bounded universal trigger.
 
 The central idea is to train a purifier that maps a noised and potentially poisoned image back to its clean counterpart in **one neural function evaluation**. This keeps the generative purification spirit of diffusion defenses, but avoids long iterative denoising chains.
 
@@ -44,7 +45,7 @@ Consistency purification: one denoising step
 
 ## Threat Model
 
-We focus on **targeted clean-label poisoning attacks**. The attacker injects a small fraction of imperceptibly perturbed training samples into the training set. The labels remain correct, but the poisoned samples cause a specific target test image to be misclassified after victim training.
+We focus on **targeted clean-label poisoning attacks**. The attacker injects a small fraction of imperceptibly perturbed training samples while preserving their labels. WB and BP target a selected test image, whereas Narcissus aims to map triggered non-target inputs to an attacker-selected class.
 
 ### Attacker objective
 
@@ -59,6 +60,10 @@ $$
 $$
 
 The attack is clean-label, so the visible image content and label remain consistent.
+
+### Attacker knowledge
+
+WB assumes knowledge sufficient to optimize gradients for a training-from-scratch victim, BP uses substitute feature extractors in a transfer-learning setting, and Narcissus trains a surrogate using target-class CIFAR-10 samples and Tiny ImageNet proxy out-of-distribution data. The defender is not given the attack identity, poisoned indices, target, or trigger.
 
 ### Defender capability
 
@@ -123,6 +128,10 @@ $$
 
 By centering the target inside the poison feature cluster, the attack improves transferability and robustness to feature-space shifts.
 
+### 3. Narcissus
+
+Narcissus learns a class-oriented universal perturbation with a ResNet-18 surrogate. The surrogate is first trained with Tiny ImageNet proxy out-of-distribution data and target-class CIFAR-10 samples, followed by target-class warm-up and trigger optimization. The resulting pixel-space trigger has shape $3\times32\times32$, is bounded by $\epsilon=8/255$, and is applied at scale 1.0. Clean-label training poisons preserve target-class labels. Attack success is measured on all 9,000 non-target CIFAR-10 test images patched with a held-out evaluation trigger; test queries are never purified.
+
 ---
 
 ## Proposed Method: Pixel-Space Consistency Purification
@@ -174,6 +183,7 @@ The paired dataset contains:
 
 - Witches' Brew poison-clean pairs.
 - Bullseye Polytope poison-clean pairs.
+- Narcissus poison-clean pairs generated with independent CM-training triggers.
 - Clean identity pairs where $x_{poison} = x_{clean}$.
 
 The clean identity pairs are important because the purifier will be applied blindly to every image. It should learn to preserve benign images instead of unnecessarily modifying them.
@@ -183,9 +193,10 @@ Target training size:
 ```text
 10,000 Witches' Brew pairs
 10,000 Bullseye Polytope pairs
+10,000 Narcissus pairs
 10,000 clean identity pairs
 --------------------------------
-30,000 total purifier-training pairs
+40,000 total purifier-training pairs
 ```
 
 This poison bank is not meant to represent one single victim dataset. Instead, it is a controlled training source for learning general poison-removal behavior.
@@ -204,7 +215,8 @@ CIFAR-10 contains 5,000 training images per class. For each class $c$, all indic
 | `[1500, 2499]` | Bullseye Polytope training pool |
 | `[2500, 2519]` | Bullseye Polytope evaluation pool |
 | `[2520, 3519]` | Clean identity training pool |
-| `[3520, 4999]` | Reserve and target-selection pool |
+| `[3520, 4519]` | Narcissus CM pairs: 100 positions per trigger target class |
+| `[4520, 4999]` | Reserve and target-selection pool |
 
 This split prevents leakage between purifier-training pairs and held-out poison evaluation cases.
 
@@ -214,6 +226,7 @@ Pair counts:
 Witches' Brew:       10 classes x 2 blocks x 500 images = 10,000 pairs
 Bullseye Polytope:   10 classes x 100 groups x 10 images = 10,000 pairs
 Clean identity:      10 classes x 1,000 images = 10,000 pairs
+Narcissus:           10 triggers x 10 source classes x 100 images = 10,000 pairs
 ```
 
 ---
@@ -375,7 +388,7 @@ $$
 6. For each clean identity image:
    a. Store (x_clean, x_clean, y, clean_metadata) in D_pair.
 
-7. Save held-out WB and BP evaluation cases separately.
+7. Save held-out WB, BP, and NS evaluation cases separately.
 8. Return D_pair.
 ```
 
@@ -531,7 +544,7 @@ This method is promising but not guaranteed to work without careful validation. 
 
 ### Distribution mismatch
 
-The purifier is trained on generated WB/BP poison distributions. It may not generalize to stronger adaptive poisons or unseen poison mechanisms.
+The purifier is trained on generated WB/BP/NS poison distributions. It may not generalize to stronger adaptive poisons or unseen poison mechanisms.
 
 ### Clean accuracy degradation
 
@@ -559,13 +572,13 @@ Training the purifier requires expensive offline generation of many poison-clean
 
 ### Stage 1: Sanity check on synthetic residuals
 
-Before generating expensive WB/BP poisons, train the CM purifier on clean images with synthetic bounded perturbations. Verify that:
+Before generating expensive WB/BP/NS poisons, train the CM purifier on clean images with synthetic bounded perturbations. Verify that:
 
 - Clean images are preserved.
 - Small perturbations are removed.
 - Classifier accuracy does not collapse.
 
-### Stage 2: Small WB/BP pilot
+### Stage 2: Small WB/BP/NS pilot
 
 Generate a small poison bank:
 
@@ -579,7 +592,7 @@ Train a small U-Net CM and evaluate reconstruction quality and clean-image prese
 
 ### Stage 3: Full poison bank
 
-Scale to the planned 30,000-pair dataset:
+Scale to the planned 40,000-pair dataset:
 
 ```text
 10,000 WB pairs
@@ -592,6 +605,7 @@ Tune:
 - $t^{\star}$
 - $\gamma_{WB}$
 - $\gamma_{BP}$
+- $\gamma_{NS}$
 - $\lambda_1, \lambda_2, \lambda_3, \lambda_4, \lambda_5$
 - EMA decay
 - Timestep schedule
@@ -673,7 +687,7 @@ Important generated outputs:
 
 ```text
 dataset_generation/datasets/train/       purifier-training clean/poison pairs
-dataset_generation/datasets/test/        held-out WB/BP evaluation cases
+dataset_generation/datasets/test/        held-out WB/BP/NS evaluation cases
 consistency_model/checkpoints/cm_purifier.pth
 consistency_model/checkpoints/cm_purifier_lpips.pth
 purify/outputs/test_purified/
@@ -995,7 +1009,7 @@ More specifically, the method differs from standard diffusion denoising and prio
 
 - Train-time data poison purification.
 - One-step CM inference.
-- Explicit paired WB/BP poison-clean training.
+- Explicit paired WB/BP/NS poison-clean training.
 - Poison residuals modeled as structured noise in the forward process.
 - Clean identity preservation for blind dataset-wide sanitization.
 

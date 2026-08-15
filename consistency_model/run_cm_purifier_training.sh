@@ -203,6 +203,7 @@ echo "=============================="
     --ema-decay "${EMA_DECAY:-0.9999}" \
     --gamma-wb "${GAMMA_WB:-1.0}" \
     --gamma-bp "${GAMMA_BP:-1.0}" \
+    --gamma-ns "${GAMMA_NS:-1.0}" \
     --gamma-clean "${GAMMA_CLEAN:-0.0}" \
     --lambda-lpips "${LAMBDA_LPIPS}" \
     --lpips-net "${LPIPS_NET}" \

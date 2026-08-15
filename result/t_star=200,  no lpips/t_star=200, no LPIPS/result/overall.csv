@@ -1,0 +1,4 @@
+Attack,Cases,Clean Acc Poison,Target Acc Poison,Clean Acc Purified,Target Acc Purified
+BP,20,93.7050%,100.0000%,91.6515%,0.0000%
+WB,10,92.1412%,30.0000%,67.5778%,0.0000%
+All,30,93.1837%,76.6667%,83.6269%,0.0000%

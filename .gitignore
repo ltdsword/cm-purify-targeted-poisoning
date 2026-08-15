@@ -16,3 +16,8 @@ consistency_model/InstantPure
 AGENT.md
 AGENTS.md
 CLAUDE.md
+report/
+docs/
+prompt.txt
+__pycache__/
+*.py[cod]
