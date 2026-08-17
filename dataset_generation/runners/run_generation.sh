@@ -35,7 +35,7 @@ fi
 DATASET_GENERATION_DIR="${REPO_DIR}/dataset_generation"
 SCRIPT_PATH="${DATASET_GENERATION_DIR}/scripts/dataset_generation.py"
 LOG_DIR="${DATASET_GENERATION_DIR}/logs"
-ENV_NAME="purifying_poison"
+ENV_NAME="${ENV_NAME:-purifying_poison}"
 JOB_ID="${SLURM_JOB_ID:-local_$(date +%Y%m%d_%H%M%S)_$$}"
 MAIN_LOG="${LOG_DIR}/poison_pipeline_${JOB_ID}.log"
 ERR_LOG="${LOG_DIR}/poison_pipeline_err_${JOB_ID}.log"
