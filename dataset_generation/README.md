@@ -66,37 +66,27 @@ The runner intentionally excludes the Hugging Face diffusion packages because da
 - BullseyePoison checkpoints are reused from `dataset_generation/BullseyePoison/model-chks/` when present. If the directory is empty, the BP stage downloads and extracts the checkpoint archive through gdown.
 - WB does not require a separately downloaded victim checkpoint. It runs Forest with `--vruns 0`; Forest records the poison-crafting model initialization seed, and no post-crafting victim is trained during generation.
 
-## 3. Install Tiny ImageNet
+## 3. Automatic Tiny ImageNet installation
 
-Narcissus requires the Tiny ImageNet training split as its proxy out-of-distribution (POOD) dataset. It is not downloaded by the runner, and there is deliberately no fallback dataset.
+Narcissus requires the Tiny ImageNet training split as its proxy out-of-distribution (POOD) dataset. `run_generation.sh` now installs it automatically for `NS_STAGE=triggers` and `NS_STAGE=all`; there is deliberately no substitute or fallback dataset.
 
-On the server login node, choose a persistent storage directory outside the Git repository. Replace every `USERNAME` placeholder below with the server account name (for example, `ndthuc03`):
+The default server paths are:
 
-```bash
-TINY_IMAGENET_PARENT=/media02/USERNAME/datasets
-mkdir -p "${TINY_IMAGENET_PARENT}"
-cd "${TINY_IMAGENET_PARENT}"
-
-wget -c http://cs231n.stanford.edu/tiny-imagenet-200.zip
-unzip -q tiny-imagenet-200.zip
-
-NARCISSUS_POOD_ROOT="${TINY_IMAGENET_PARENT}/tiny-imagenet-200/train"
-test -d "${NARCISSUS_POOD_ROOT}"
-
-TINY_CLASS_COUNT="$(find "${NARCISSUS_POOD_ROOT}" -mindepth 1 -maxdepth 1 -type d | wc -l)"
-test "${TINY_CLASS_COUNT}" -eq 200
-echo "Tiny ImageNet ready: ${NARCISSUS_POOD_ROOT} (${TINY_CLASS_COUNT} classes)"
+```text
+archive:  dataset_generation/datasets/tiny-imagenet-200.zip
+dataset:  dataset_generation/datasets/tiny-imagenet-200/
+POOD:     dataset_generation/datasets/tiny-imagenet-200/train/
 ```
 
-If `wget` is unavailable, use this download command instead:
+Before generation, the runner validates both the immediate class directories and the JPEG files under the POOD path:
 
-```bash
-curl -L --retry 5 --continue-at - \
-  http://cs231n.stanford.edu/tiny-imagenet-200.zip \
-  --output tiny-imagenet-200.zip
-```
+- if exactly 200 class directories and 100,000 JPEG images exist, it logs `Tiny ImageNet already installed; skipping download`;
+- if the directory is absent or incomplete, it downloads `tiny-imagenet-200.zip` from the Stanford CS231n URL using `wget` or `curl`, extracts it with `unzip`, and validates the complete layout again;
+- if downloading, extraction, or validation fails, the Slurm job exits before running the poison-generation stages.
 
-The value passed as `NARCISSUS_POOD_ROOT` must be the `train` directory itself. Its immediate children must be the 200 class directories expected by `torchvision.datasets.ImageFolder`:
+The archive is retained so an interrupted extraction can be repaired without downloading it again. `wget --continue` and `curl --continue-at -` resume a partial archive download.
+
+The validated layout is the `ImageFolder` structure expected by Narcissus:
 
 ```text
 tiny-imagenet-200/
@@ -108,7 +98,14 @@ tiny-imagenet-200/
     └── ... 198 additional class directories
 ```
 
-Do not pass the parent `tiny-imagenet-200/` directory, the ZIP file, or the validation directory.
+The default path needs no submission-time override. For storage outside the repository, set one of these variables in `sbatch --export`:
+
+- `TINY_IMAGENET_PARENT=/persistent/dataset/directory` installs `tiny-imagenet-200/` below that directory;
+- `TINY_IMAGENET_ROOT=/persistent/dataset/directory/tiny-imagenet-200` selects the extracted dataset root;
+- `NARCISSUS_POOD_ROOT=/persistent/dataset/directory/tiny-imagenet-200/train` selects an existing or corresponding training directory;
+- `TINY_IMAGENET_URL=...` overrides the archive URL for a university mirror.
+
+`NARCISSUS_POOD_ROOT` must resolve to the `train` directory itself—not the parent dataset root, ZIP file, or validation directory. When using automatic installation with a custom location, retain the extracted directory name `tiny-imagenet-200`.
 
 ## 4. Preflight checks for the server checkout
 
@@ -155,10 +152,10 @@ sbatch --export=ALL,RUN_WB=0,RUN_BP=1,RUN_NARCISSUS=0 \
   dataset_generation/runners/run_generation.sh
 ```
 
-After BP completes, generate all final Narcissus triggers, training pairs, evaluation cases, and validation metadata. Replace the POOD path with the installed location:
+After BP completes, generate all final Narcissus triggers, training pairs, evaluation cases, and validation metadata. This submission automatically installs Tiny ImageNet at the default project path when necessary:
 
 ```bash
-sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=all,NS_PROFILE=final,NS_CLASSES=all,NS_TRIGGER_KIND=both,NARCISSUS_POOD_ROOT=/media02/USERNAME/datasets/tiny-imagenet-200/train \
+sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=all,NS_PROFILE=final,NS_CLASSES=all,NS_TRIGGER_KIND=both \
   dataset_generation/runners/run_generation.sh
 ```
 
@@ -176,7 +173,7 @@ Do not delete these directories between submissions. A checkpoint generated with
 The smoke profile uses target class 2, one short optimization stage, 50 poisoned training images, 500 triggered queries, and profile-specific output directories. It is only a pipeline diagnostic and must not be reported as an experimental result.
 
 ```bash
-sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=all,NS_PROFILE=smoke,NS_CLASSES=2,NS_TRIGGER_KIND=both,NARCISSUS_POOD_ROOT=/media02/USERNAME/datasets/tiny-imagenet-200/train \
+sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=all,NS_PROFILE=smoke,NS_CLASSES=2,NS_TRIGGER_KIND=both \
   dataset_generation/runners/run_generation.sh
 ```
 
@@ -194,14 +191,14 @@ dataset_generation/Narcissus/checkpoints/smoke/
 Resume both triggers and all exports for class 4:
 
 ```bash
-sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=all,NS_PROFILE=final,NS_CLASSES=4,NS_TRIGGER_KIND=both,NARCISSUS_POOD_ROOT=/media02/USERNAME/datasets/tiny-imagenet-200/train \
+sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=all,NS_PROFILE=final,NS_CLASSES=4,NS_TRIGGER_KIND=both \
   dataset_generation/runners/run_generation.sh
 ```
 
 Resume only the evaluation trigger for class 4:
 
 ```bash
-sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=triggers,NS_PROFILE=final,NS_CLASSES=4,NS_TRIGGER_KIND=eval,NARCISSUS_POOD_ROOT=/media02/USERNAME/datasets/tiny-imagenet-200/train \
+sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=triggers,NS_PROFILE=final,NS_CLASSES=4,NS_TRIGGER_KIND=eval \
   dataset_generation/runners/run_generation.sh
 ```
 
@@ -226,7 +223,7 @@ sbatch --export=ALL,RUN_WB=0,RUN_BP=0,RUN_NARCISSUS=1,NS_STAGE=validate,NS_PROFI
   dataset_generation/runners/run_generation.sh
 ```
 
-The POOD path is required only for `NS_STAGE=triggers` and `NS_STAGE=all`. Bank export, evaluation export, and validation load previously generated trigger artifacts and therefore do not access Tiny ImageNet.
+Tiny ImageNet is checked or installed only for `NS_STAGE=triggers` and `NS_STAGE=all`. Bank export, evaluation export, and validation load previously generated trigger artifacts and therefore do not access Tiny ImageNet.
 
 ## 6. Slurm controls
 
@@ -235,7 +232,10 @@ The POOD path is required only for `NS_STAGE=triggers` and `NS_STAGE=all`. Bank 
 | `RUN_WB` | `1` | Generate or export WB poisons |
 | `RUN_BP` | `1` | Generate or export BP poisons |
 | `RUN_NARCISSUS` | `1` | Run the selected Narcissus stage |
-| `NARCISSUS_POOD_ROOT` | unset | Absolute Tiny ImageNet `train/` path |
+| `TINY_IMAGENET_PARENT` | `dataset_generation/datasets` | Archive and extraction parent |
+| `TINY_IMAGENET_ROOT` | `<parent>/tiny-imagenet-200` | Extracted dataset root |
+| `NARCISSUS_POOD_ROOT` | `<root>/train` | Tiny ImageNet `ImageFolder` path |
+| `TINY_IMAGENET_URL` | Stanford CS231n URL | Download URL or university mirror |
 | `NS_STAGE` | `all` | `triggers`, `bank`, `eval`, `validate`, or `all` |
 | `NS_PROFILE` | `final` | `final` or diagnostic `smoke` |
 | `NS_CLASSES` | `all` | `all`, one class such as `4`, or a comma-separated list |

@@ -42,7 +42,18 @@ ERR_LOG="${LOG_DIR}/poison_pipeline_err_${JOB_ID}.log"
 RUN_WB="${RUN_WB:-1}"
 RUN_BP="${RUN_BP:-1}"
 RUN_NARCISSUS="${RUN_NARCISSUS:-1}"
-NARCISSUS_POOD_ROOT="${NARCISSUS_POOD_ROOT:-}"
+if [[ -n "${NARCISSUS_POOD_ROOT:-}" ]]; then
+    TINY_IMAGENET_ROOT="${TINY_IMAGENET_ROOT:-$(dirname "${NARCISSUS_POOD_ROOT}")}"
+    TINY_IMAGENET_PARENT="${TINY_IMAGENET_PARENT:-$(dirname "${TINY_IMAGENET_ROOT}")}"
+elif [[ -n "${TINY_IMAGENET_ROOT:-}" ]]; then
+    TINY_IMAGENET_PARENT="${TINY_IMAGENET_PARENT:-$(dirname "${TINY_IMAGENET_ROOT}")}"
+    NARCISSUS_POOD_ROOT="${TINY_IMAGENET_ROOT}/train"
+else
+    TINY_IMAGENET_PARENT="${TINY_IMAGENET_PARENT:-${DATASET_GENERATION_DIR}/datasets}"
+    TINY_IMAGENET_ROOT="${TINY_IMAGENET_ROOT:-${TINY_IMAGENET_PARENT}/tiny-imagenet-200}"
+    NARCISSUS_POOD_ROOT="${TINY_IMAGENET_ROOT}/train"
+fi
+TINY_IMAGENET_URL="${TINY_IMAGENET_URL:-http://cs231n.stanford.edu/tiny-imagenet-200.zip}"
 NS_CLASSES="${NS_CLASSES:-all}"
 NS_STAGE="${NS_STAGE:-all}"
 NS_PROFILE="${NS_PROFILE:-final}"
@@ -66,6 +77,80 @@ echo "SLURM job GPUs: ${SLURM_JOB_GPUS:-<unset>}"
 echo "SLURM step GPUs: ${SLURM_STEP_GPUS:-<unset>}"
 echo "CUDA_VISIBLE_DEVICES before setup: ${CUDA_VISIBLE_DEVICES:-<unset>}"
 echo "Narcissus: run=${RUN_NARCISSUS}, stage=${NS_STAGE}, classes=${NS_CLASSES}, profile=${NS_PROFILE}"
+echo "Tiny ImageNet root: ${TINY_IMAGENET_ROOT}"
+echo "Narcissus POOD root: ${NARCISSUS_POOD_ROOT}"
+
+tiny_imagenet_class_count() {
+    if [[ ! -d "${NARCISSUS_POOD_ROOT}" ]]; then
+        echo 0
+        return
+    fi
+    find "${NARCISSUS_POOD_ROOT}" -mindepth 1 -maxdepth 1 -type d | wc -l
+}
+
+tiny_imagenet_image_count() {
+    if [[ ! -d "${NARCISSUS_POOD_ROOT}" ]]; then
+        echo 0
+        return
+    fi
+    find "${NARCISSUS_POOD_ROOT}" -type f -name '*.JPEG' | wc -l
+}
+
+tiny_imagenet_is_valid() {
+    local class_count
+    local image_count
+    class_count="$(tiny_imagenet_class_count)"
+    image_count="$(tiny_imagenet_image_count)"
+    [[ "${class_count}" -eq 200 && "${image_count}" -eq 100000 ]]
+}
+
+ensure_tiny_imagenet() {
+    if tiny_imagenet_is_valid; then
+        echo "Tiny ImageNet already installed; skipping download (${NARCISSUS_POOD_ROOT}, 200 classes, 100000 images)."
+        return
+    fi
+
+    local archive_path
+    archive_path="${TINY_IMAGENET_PARENT}/tiny-imagenet-200.zip"
+    mkdir -p "${TINY_IMAGENET_PARENT}"
+
+    echo "Tiny ImageNet is missing or incomplete at ${NARCISSUS_POOD_ROOT}."
+    echo "Downloading ${TINY_IMAGENET_URL} to ${archive_path}."
+    if command -v wget >/dev/null 2>&1; then
+        wget --continue --tries=5 --timeout=60 --output-document="${archive_path}" "${TINY_IMAGENET_URL}"
+    elif command -v curl >/dev/null 2>&1; then
+        curl --fail --location --retry 5 --continue-at - \
+            "${TINY_IMAGENET_URL}" --output "${archive_path}"
+    else
+        echo "ERROR: Tiny ImageNet installation requires wget or curl." >&2
+        exit 1
+    fi
+
+    if ! command -v unzip >/dev/null 2>&1; then
+        echo "ERROR: Tiny ImageNet installation requires unzip." >&2
+        exit 1
+    fi
+    echo "Extracting Tiny ImageNet under ${TINY_IMAGENET_PARENT}."
+    unzip -q -o "${archive_path}" -d "${TINY_IMAGENET_PARENT}"
+
+    if ! tiny_imagenet_is_valid; then
+        echo "ERROR: Tiny ImageNet installation is invalid." >&2
+        echo "Expected 200 class directories and 100000 JPEG images under ${NARCISSUS_POOD_ROOT}." >&2
+        echo "Found $(tiny_imagenet_class_count) classes and $(tiny_imagenet_image_count) JPEG images." >&2
+        exit 1
+    fi
+    echo "Tiny ImageNet installation complete: ${NARCISSUS_POOD_ROOT} (200 classes, 100000 images)."
+}
+
+if [[ "${RUN_NARCISSUS}" == "1" ]]; then
+    case "${NS_STAGE}" in
+        triggers|bank|eval|validate|all) ;;
+        *) echo "ERROR: NS_STAGE must be triggers, bank, eval, validate, or all." >&2; exit 1 ;;
+    esac
+    if [[ "${NS_STAGE}" == "triggers" || "${NS_STAGE}" == "all" ]]; then
+        ensure_tiny_imagenet
+    fi
+fi
 
 if command -v nvidia-smi >/dev/null 2>&1; then
     nvidia-smi || true
@@ -173,8 +258,8 @@ if [[ "${RUN_NARCISSUS}" == "1" ]]; then
         *) echo "ERROR: NS_STAGE must be triggers, bank, eval, validate, or all." >&2; exit 1 ;;
     esac
     if [[ "${NS_STAGE}" == "triggers" || "${NS_STAGE}" == "all" ]]; then
-        if [[ -z "${NARCISSUS_POOD_ROOT}" ]]; then
-            echo "ERROR: set NARCISSUS_POOD_ROOT to the Tiny ImageNet ImageFolder train directory." >&2
+        if ! tiny_imagenet_is_valid; then
+            echo "ERROR: Tiny ImageNet became unavailable at ${NARCISSUS_POOD_ROOT}." >&2
             exit 1
         fi
         NS_POOD_ARGS=(--pood-root "${NARCISSUS_POOD_ROOT}")
