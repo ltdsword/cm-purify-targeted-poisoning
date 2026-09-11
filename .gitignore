@@ -1,23 +1,66 @@
+# Generated data and poison banks
+/dataset_generation/datasets/
+
+# Model weights and checkpoints
+/consistency_model/checkpoints/
+/dataset_generation/Narcissus/checkpoints/
+victim_checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+
+# Run outputs
+/benchmark/outputs/
+/purify/outputs/
+wandb/
+runs/
+lightning_logs/
+events.out.tfevents.*
+
+# Slurm job logs
+logs/
+slurm-*.out
+slurm-*.err
+nohup.out
+
+# Vendored attack repos
 /dataset_generation/BullseyePoison/model-chks/
 /dataset_generation/BullseyePoison/model-chks-release/
 /dataset_generation/BullseyePoison/benchmark_results/
-/dataset_generation/datasets
-/dataset_generation/docs
 /consistency_model/InstantPure/
-/consistency_model/checkpoints/
-/benchmark/outputs/
 
-slurm-*.out
-
-
-.env
-.venv
-consistency_model/InstantPure
+# Docs, reports and agent scratch
+/docs/
+/dataset_generation/docs/
+/report/
+prompt.txt
 AGENT.md
 AGENTS.md
 CLAUDE.md
-report/
-docs/
-prompt.txt
+.claude/
+
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Environments and secrets
+.env
+.env.*
+.venv/
+venv/
+env/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
