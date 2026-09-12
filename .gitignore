@@ -1,9 +1,9 @@
 # Generated data and poison banks
-/dataset_generation/datasets/
+/dataset_generation/datasets
 
 # Model weights and checkpoints
-/consistency_model/checkpoints/
-/dataset_generation/Narcissus/checkpoints/
+/consistency_model/checkpoints
+/dataset_generation/Narcissus/checkpoints
 victim_checkpoints/
 *.pth
 *.pt
@@ -11,7 +11,7 @@ victim_checkpoints/
 *.safetensors
 
 # Run outputs
-/benchmark/outputs/
+/benchmark/outputs
 /purify/outputs/
 wandb/
 runs/
@@ -20,13 +20,15 @@ events.out.tfevents.*
 
 # Slurm job logs
 logs/
+logs
 slurm-*.out
 slurm-*.err
 nohup.out
 
 # Vendored attack repos
-/dataset_generation/BullseyePoison/model-chks/
-/dataset_generation/BullseyePoison/model-chks-release/
+/dataset_generation/BullseyePoison/model-chks
+/dataset_generation/BullseyePoison/model-chks-release
+/dataset_generation/BullseyePoison/datasets
 /dataset_generation/BullseyePoison/benchmark_results/
 /consistency_model/InstantPure/
 

@@ -159,7 +159,7 @@ def _make_loader(dataset, batch_size: int, num_workers: int, shuffle: bool, seed
         pin_memory=torch.cuda.is_available(),
         worker_init_fn=_worker_seed,
         generator=generator,
-        persistent_workers=num_workers > 0,
+        persistent_workers=False,
     )
 
 
