@@ -160,6 +160,22 @@ class CMPurifier:
         purified = purified.detach().cpu()
         return purified[0] if single_image else purified
 
+    # Purpose: Advance the private noise stream as if one batch had been purified.
+    # Input: number of images in the batch being served from cache instead.
+    # Output: none; the generator lands exactly where purify_tensor would leave it.
+    # Note: reusing a cached purified image is only exact if the noise stream stays
+    # aligned, because purify_tensor draws one (B,3,H,W) block per batch and the
+    # noise an image receives is therefore fixed by its position, not its content.
+    def skip_batch_noise(self, count: int) -> None:
+        if count <= 0:
+            return
+        torch.randn(
+            (count, 3, self.image_size, self.image_size),
+            dtype=torch.float32,
+            device=self.device,
+            generator=self.noise_generator,
+        )
+
     # Purpose: Purify a single in-memory PIL image.
     # Input: PIL image.
     # Output: purified PIL RGB image.

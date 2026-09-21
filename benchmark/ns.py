@@ -6,6 +6,7 @@ CM-purified 50,000-image training folder. Test queries are never purified.
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import logging
@@ -22,6 +23,15 @@ import torchvision
 import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
+
+# A fresh DataLoader is built per epoch so that each epoch's shuffle and
+# RandomCrop stream depend only on the epoch index, not on where a run resumed.
+# Under the default "file_descriptor" sharing strategy that churn exhausted
+# gpu04's 131,072 fd limit in 59 epochs (~2.2k fds/epoch) and deadlocked job
+# 76396: the parent's resource_sharer thread hit EMFILE on accept() and stopped
+# serving fds, so the next epoch's workers blocked forever. "file_system" passes
+# shared tensors by name instead of by fd, which removes the per-tensor fd cost.
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 from dataset_generation.Narcissus.integration import apply_trigger_array, load_trigger_artifact
 from dataset_generation.Narcissus.models.resnet import ResNet18
@@ -148,6 +158,18 @@ def _worker_seed(worker_id: int) -> None:
     random.seed(seed)
 
 
+# Purpose: Shut down one DataLoader's worker processes without waiting for GC.
+# Input: the loader to retire.
+# Output: none; workers are joined and their fds released.
+def _shutdown_loader(loader: DataLoader) -> None:
+    iterator = getattr(loader, "_iterator", None)
+    if iterator is not None:
+        shutdown = getattr(iterator, "_shutdown_workers", None)
+        if shutdown is not None:
+            shutdown()
+        loader._iterator = None
+
+
 def _make_loader(dataset, batch_size: int, num_workers: int, shuffle: bool, seed: int) -> DataLoader:
     generator = torch.Generator()
     generator.manual_seed(seed)
@@ -163,13 +185,20 @@ def _make_loader(dataset, batch_size: int, num_workers: int, shuffle: bool, seed
     )
 
 
-def _load_checkpoint(path: Path, fingerprint: str, device: torch.device) -> Dict[str, object] | None:
+# Purpose: Load one NS victim checkpoint onto CPU and reject a mismatched config.
+# Input: checkpoint path, expected config fingerprint.
+# Output: the checkpoint payload, or None when the file is absent.
+# Note: map_location is always CPU. The payload carries RNG state saved by
+# torch.get_rng_state(), which torch.set_rng_state only accepts on CPU; mapping
+# onto CUDA moves it too and makes every resume raise TypeError. Model and
+# optimizer states are copied onto the right device by their own load_state_dict.
+def _load_checkpoint(path: Path, fingerprint: str) -> Dict[str, object] | None:
     if not path.is_file():
         return None
     try:
-        checkpoint = torch.load(path, map_location=device, weights_only=False)
+        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
     except TypeError:
-        checkpoint = torch.load(path, map_location=device)
+        checkpoint = torch.load(path, map_location="cpu")
     if checkpoint.get("config_fingerprint") != fingerprint:
         raise ValueError(f"Incompatible NS victim checkpoint: {path}")
     return checkpoint
@@ -205,7 +234,7 @@ def train_victim(
     criterion = torch.nn.CrossEntropyLoss()
     checkpoint_path = materialized.case_output_dir / "victim_checkpoints" / condition / "state.pt"
     fingerprint = _fingerprint(config, condition, materialized.case.name)
-    checkpoint = _load_checkpoint(checkpoint_path, fingerprint, device) if config.resume else None
+    checkpoint = _load_checkpoint(checkpoint_path, fingerprint) if config.resume else None
     next_epoch = 0
     if checkpoint is not None:
         model.load_state_dict(checkpoint["model"])
@@ -221,17 +250,24 @@ def train_victim(
         model.train()
         correct = total = 0
         total_loss = 0.0
-        for images, labels in loader:
-            images = images.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
-            optimizer.zero_grad(set_to_none=True)
-            logits = model(images)
-            loss = criterion(logits, labels)
-            loss.backward()
-            optimizer.step()
-            total_loss += float(loss.item()) * labels.size(0)
-            correct += int((logits.argmax(dim=1) == labels).sum().item())
-            total += labels.size(0)
+        try:
+            for images, labels in loader:
+                images = images.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
+                optimizer.zero_grad(set_to_none=True)
+                logits = model(images)
+                loss = criterion(logits, labels)
+                loss.backward()
+                optimizer.step()
+                total_loss += float(loss.item()) * labels.size(0)
+                correct += int((logits.argmax(dim=1) == labels).sum().item())
+                total += labels.size(0)
+        finally:
+            # Reaping here rather than at the next rebind keeps at most one
+            # worker pool alive; refcount GC alone left 200 pools to pile up.
+            _shutdown_loader(loader)
+            del loader
+            gc.collect()
         scheduler.step()
         logger.info(
             "NS %s victim epoch %d/%d | loss=%.4f | train_acc=%.2f%% | elapsed=%.1fs",

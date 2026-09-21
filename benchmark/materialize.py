@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import json
+import os
 import pickle
 import shutil
 import statistics
@@ -409,6 +411,47 @@ def materialize_ns_case(
     )
 
 
+# Purpose: Name the cache bucket that a given purifier configuration may share.
+# Input: purifier, batch size, and purifier checkpoint digest.
+# Output: a short fingerprint string; any two runs sharing it purify identically.
+# Note: batch_size is part of the key because purify_tensor draws one (B,3,H,W)
+# noise block per batch, so changing B changes which noise each position receives.
+def purify_cache_fingerprint(purifier: CMPurifier, batch_size: int, checkpoint_sha256: str) -> str:
+    schedule = purifier.schedule_statistics()
+    payload = json.dumps(
+        {
+            "checkpoint_sha256": checkpoint_sha256,
+            "t_star": int(schedule["t_star"]),
+            "seed": int(schedule["seed"]),
+            "batch_size": int(batch_size),
+            "image_size": int(purifier.image_size),
+            "device_type": purifier.device.type,
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
+# Purpose: Content digest of one source image file.
+# Input: path to a PNG.
+# Output: hex sha256 of the file bytes.
+def _file_digest(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+# Purpose: Locate one cached purified image by source content and batch position.
+# Input: cache root, source digest, and the image's index in the purification order.
+# Output: path where that purified image is or would be stored.
+# Note: the position is part of the key, not just the content. Two identical source
+# images at different positions receive different noise and must not share an entry.
+def _cache_entry(cache_root: Path, source_digest: str, position: int) -> Path:
+    return cache_root / source_digest[:2] / f"{source_digest}_{position}.png"
+
+
 # Purpose: Purify all images in a materialized train folder and write the inspection subset.
 # Input: MaterializedCase, CMPurifier, batch size, log interval, and logger.
 # Output: synchronized per-case purification timing statistics.
@@ -419,6 +462,7 @@ def purify_materialized_case(
     log_steps: int,
     logger: logging.Logger,
     checkpoint_sha256: str = "",
+    cache_root: Path | None = None,
 ) -> PurificationStats:
     source_paths = list_images(materialized.poisoned_train_dir)
     if not source_paths:
@@ -434,14 +478,37 @@ def purify_materialized_case(
         torch.cuda.synchronize(purifier.device)
     started_at = time.monotonic()
     processed = 0
+    cache_hits = 0
     batch_seconds_per_image: List[float] = []
     for start in range(0, len(source_paths), batch_size):
         batch_sources = source_paths[start : start + batch_size]
         batch_outputs = output_paths[start : start + batch_size]
         batch_started_at = time.monotonic()
-        purifier.purify_paths(batch_sources, batch_outputs, batch_size=len(batch_sources))
-        if purifier.device.type == "cuda":
-            torch.cuda.synchronize(purifier.device)
+        # A batch is served from cache only when every image in it hits, so the
+        # model is either skipped for the whole batch or run on the whole batch.
+        # Running it on a subset would change the tensor shape, and conv kernel
+        # selection is shape-dependent, which would break bit-for-bit equality.
+        entries: List[Path] = []
+        if cache_root is not None:
+            entries = [
+                _cache_entry(cache_root, _file_digest(source), start + offset)
+                for offset, source in enumerate(batch_sources)
+            ]
+        if entries and all(entry.is_file() for entry in entries):
+            for entry, destination in zip(entries, batch_outputs):
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(entry, destination)
+            purifier.skip_batch_noise(len(batch_sources))
+            cache_hits += len(batch_sources)
+        else:
+            purifier.purify_paths(batch_sources, batch_outputs, batch_size=len(batch_sources))
+            if purifier.device.type == "cuda":
+                torch.cuda.synchronize(purifier.device)
+            for entry, produced in zip(entries, batch_outputs):
+                entry.parent.mkdir(parents=True, exist_ok=True)
+                temporary = entry.with_suffix(entry.suffix + ".tmp")
+                shutil.copy2(produced, temporary)
+                os.replace(temporary, entry)
         batch_elapsed = time.monotonic() - batch_started_at
         batch_seconds_per_image.append(batch_elapsed / max(len(batch_sources), 1))
         processed += len(batch_sources)
@@ -449,6 +516,11 @@ def purify_materialized_case(
             logger.info("Purified full train | %s", format_progress(processed, len(source_paths), started_at, purifier.device))
 
     elapsed_seconds = time.monotonic() - started_at
+    if cache_root is not None:
+        logger.info(
+            "Purification cache: %d/%d images reused (%.1f%%); timing below is NOT a purification benchmark",
+            cache_hits, processed, 100.0 * cache_hits / max(processed, 1),
+        )
     for poison_name, relpath in materialized.poison_relpaths.items():
         source = materialized.purified_train_dir / relpath
         destination = materialized.purify_dir / poison_name
@@ -474,6 +546,8 @@ def purify_materialized_case(
         {
             "case": materialized.case.name,
             "attack": materialized.case.attack,
+            "purification_cache_hits": cache_hits,
+            "purification_cache_enabled": cache_root is not None,
             "target_class": int(materialized.case.setup["target class"]),
             "target_index": int(materialized.case.setup["target index"]),
             "base_class": int(materialized.case.setup["base class"]),

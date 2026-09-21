@@ -18,7 +18,7 @@ from . import DEFAULT_CHECKPOINT_PATH, DEFAULT_OUTPUT_DIR, DEFAULT_TEST_DIR
 from .bp import evaluate_bp_case
 from .cases import BenchmarkCase, discover_benchmark_cases, summarize_cases
 from .common import append_jsonl, log_section, setup_logging, write_json, write_results_csv
-from .materialize import materialize_bp_case, materialize_wb_case, purify_materialized_case
+from .materialize import materialize_bp_case, materialize_wb_case, purify_cache_fingerprint, purify_materialized_case
 from .materialize import PurificationStats, load_completed_materialized_case, materialize_ns_case
 from .ns import NSVictimConfig, evaluate_ns_case
 from .wb import evaluate_wb_case
@@ -36,6 +36,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--test-dir", type=str, default=DEFAULT_TEST_DIR)
     parser.add_argument("--output-dir", type=str, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--run-id", type=str, default=None)
+    parser.add_argument(
+        "--purify-cache-dir", type=str, default=None,
+        help="Reuse purified images across cases. Exact: every case re-seeds the noise "
+             "generator to --seed and walks the same file order, so an image's purified "
+             "output depends only on its content and its position. Saves ~99%% of "
+             "purification work on BP, where only 10 of 50,000 images differ per case. "
+             "Purification timing from a cached run is not a purification benchmark.",
+    )
     parser.add_argument(
         "--attack-filter", type=str, default="all",
         choices=["all", "WB", "BP", "NS", "wb", "bp", "ns"],
@@ -382,6 +390,7 @@ def main(argv=None) -> Path:
     write_json(run_root / "run_config.json", {"args": vars(args), "paths": {key: str(value) for key, value in paths.items()}, "cases": summary})
 
     purifier = None
+    purify_cache_root = None
     if not args.skip_purify:
         log_section(LOGGER, "2. LOADING CM PURIFIER...")
         torch.manual_seed(args.seed)
@@ -407,6 +416,16 @@ def main(argv=None) -> Path:
         LOGGER.info("Skipping purification by request.")
 
     checkpoint_hash = "" if args.skip_purify else file_sha256(paths["checkpoint"])
+
+    if args.purify_cache_dir and purifier is not None:
+        # Bucket by everything that changes the purified pixels, so a cache built
+        # for one checkpoint/t*/seed/batch size can never be read by a run using
+        # different ones.
+        purify_cache_root = Path(args.purify_cache_dir) / purify_cache_fingerprint(
+            purifier, args.batch_size, checkpoint_hash
+        )
+        purify_cache_root.mkdir(parents=True, exist_ok=True)
+        LOGGER.info("Purification cache: %s", purify_cache_root)
 
     for case_index, case in enumerate(cases, start=1):
         log_section(LOGGER, f"CASE {case_index}/{len(cases)}: {case.name} ({case.attack})")
@@ -440,6 +459,7 @@ def main(argv=None) -> Path:
             timing = purify_materialized_case(
                 materialized=materialized,
                 purifier=purifier,
+                cache_root=purify_cache_root,
                 batch_size=args.batch_size,
                 log_steps=args.log_steps,
                 logger=LOGGER,

@@ -10,7 +10,10 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from benchmark.cases import BenchmarkCase, discover_benchmark_cases, parse_case_name
 from benchmark.materialize import MaterializedCase, purify_materialized_case
-from benchmark.ns import NSVictimConfig, _accuracy, _attack_success, _atomic_save, _fingerprint, _load_checkpoint
+from benchmark.ns import (
+    NSVictimConfig, _accuracy, _attack_success, _atomic_save, _fingerprint, _load_checkpoint,
+    _restore_rng_state, _rng_state,
+)
 
 
 class ConstantModel(torch.nn.Module):
@@ -76,12 +79,31 @@ class BenchmarkNSTests(unittest.TestCase):
             config = NSVictimConfig(epochs=2, num_workers=0, triggered_test_limit=500)
             fingerprint = _fingerprint(config, "poison", "NS_c2")
             _atomic_save({"config_fingerprint": fingerprint, "next_epoch": 1}, checkpoint_path)
-            loaded = _load_checkpoint(checkpoint_path, fingerprint, torch.device("cpu"))
+            loaded = _load_checkpoint(checkpoint_path, fingerprint)
             self.assertEqual(loaded["next_epoch"], 1)
             equivalent = NSVictimConfig(epochs=2, num_workers=0, triggered_test_limit=9000, resume=False)
             self.assertEqual(fingerprint, _fingerprint(equivalent, "poison", "NS_c2"))
             with self.assertRaises(ValueError):
-                _load_checkpoint(checkpoint_path, "different", torch.device("cpu"))
+                _load_checkpoint(checkpoint_path, "different")
+
+    def test_victim_checkpoint_rng_state_round_trips_on_cpu(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            checkpoint_path = Path(temporary) / "state.pt"
+            config = NSVictimConfig(epochs=2, num_workers=0, triggered_test_limit=500)
+            fingerprint = _fingerprint(config, "poison", "NS_c2")
+            torch.manual_seed(62000)
+            _atomic_save(
+                {"config_fingerprint": fingerprint, "next_epoch": 1, "rng_state": _rng_state()},
+                checkpoint_path,
+            )
+            expected = torch.rand(4)
+            loaded = _load_checkpoint(checkpoint_path, fingerprint)
+            # torch.set_rng_state rejects anything but a CPU ByteTensor, so a
+            # device-mapped load breaks every resume.
+            self.assertEqual(loaded["rng_state"]["torch"].device.type, "cpu")
+            self.assertIs(loaded["rng_state"]["torch"].dtype, torch.uint8)
+            _restore_rng_state(loaded["rng_state"])
+            self.assertTrue(torch.equal(torch.rand(4), expected))
 
     def test_per_case_timing_serialization(self):
         with tempfile.TemporaryDirectory() as temporary:
